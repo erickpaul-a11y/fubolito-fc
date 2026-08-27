@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Juego de Fútbol - Selección de Posición</title>
+    <title>Juego de Fútbol Completo</title>
     <style>
         body {
             margin: 0;
@@ -35,14 +35,18 @@
             color: white;
             font-weight: bold;
         }
-        button:hover {
-            background-color: #218838;
-        }
+        button:hover { background-color: #218838; }
         canvas {
             border: 3px solid #ffffff;
             background-color: #2e8b57;
             display: none;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        #marcador {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: none;
         }
         #info {
             margin-top: 10px;
@@ -69,37 +73,41 @@
         <button onclick="iniciarJuego()">Iniciar Partido</button>
     </div>
 
-    <canvas id="campo" width="800" height="500"></canvas>
-    <div id="info">Mueve tu bolita con las **Flechas del teclado** o **WASD**.</div>
+    <div id="marcador">Local (Rojo) <span id="golLocal">0</span> - <span id="golRival">0</span> Rival (Azul)</div>
+    <canvas id="campo" width="900" height="500"></canvas>
+    <div id="info">Mueve tu bolita roja con **WASD** o **Flechas**. ¡Completa las funciones de tu posición!</div>
 
     <script>
         const canvas = document.getElementById("campo");
         const ctx = canvas.getContext("2d");
 
         const formaciones = [
-            { nombre: "4-3-3", posiciones: [
-                { rol: "POR", x: 50, y: 250 },
-                { rol: "LAT", x: 150, y: 80 }, { rol: "DEF", x: 130, y: 180 }, { rol: "DEF", x: 130, y: 320 }, { rol: "LAT", x: 150, y: 420 },
-                { rol: "PIV", x: 250, y: 250 }, { rol: "MC", x: 330, y: 160 }, { rol: "MPO", x: 330, y: 340 },
-                { rol: "EXT", x: 520, y: 90 }, { rol: "DEL", x: 550, y: 250 }, { rol: "EXT", x: 520, y: 410 }
-            ]},
-            { nombre: "4-4-2", posiciones: [
-                { rol: "POR", x: 50, y: 250 },
-                { rol: "LAT", x: 150, y: 80 }, { rol: "DEF", x: 130, y: 190 }, { rol: "DEF", x: 130, y: 310 }, { rol: "LAT", x: 150, y: 420 },
-                { rol: "EXT", x: 320, y: 90 }, { rol: "PIV", x: 300, y: 200 }, { rol: "MC", x: 300, y: 300 }, { rol: "EXT", x: 320, y: 410 },
-                { rol: "DEL", x: 530, y: 180 }, { rol: "DEL", x: 530, y: 320 }
-            ]},
-            { nombre: "3-5-2", posiciones: [
-                { rol: "POR", x: 50, y: 250 },
-                { rol: "DEF", x: 130, y: 120 }, { rol: "DEF", x: 120, y: 250 }, { rol: "DEF", x: 130, y: 380 },
-                { rol: "LAT", x: 280, y: 70 }, { rol: "PIV", x: 260, y: 200 }, { rol: "MC", x: 260, y: 300 }, { rol: "LAT", x: 280, y: 430 }, { rol: "MPO", x: 380, y: 250 },
-                { rol: "DEL", x: 530, y: 180 }, { rol: "DEL", x: 530, y: 320 }
-            ]}
+            {
+                nombre: "4-3-3",
+                posiciones: [
+                    { rol: "POR", x: 50, y: 250 },
+                    { rol: "LAT", x: 150, y: 80 }, { rol: "DEF", x: 130, y: 180 }, { rol: "DEF", x: 130, y: 320 }, { rol: "LAT", x: 150, y: 420 },
+                    { rol: "PIV", x: 260, y: 250 }, { rol: "MC", x: 330, y: 160 }, { rol: "MPO", x: 330, y: 340 },
+                    { rol: "EXT", x: 420, y: 90 }, { rol: "DEL", x: 430, y: 250 }, { rol: "EXT", x: 420, y: 410 }
+                ]
+            },
+            {
+                nombre: "4-4-2",
+                posiciones: [
+                    { rol: "POR", x: 50, y: 250 },
+                    { rol: "LAT", x: 150, y: 80 }, { rol: "DEF", x: 130, y: 190 }, { rol: "DEF", x: 130, y: 310 }, { rol: "LAT", x: 150, y: 420 },
+                    { rol: "EXT", x: 320, y: 90 }, { rol: "PIV", x: 280, y: 200 }, { rol: "MC", x: 280, y: 300 }, { rol: "EXT", x: 320, y: 410 },
+                    { rol: "DEL", x: 430, y: 180 }, { rol: "DEL", x: 430, y: 320 }
+                ]
+            }
         ];
 
-        let jugadores = [];
-        let jugadorControlado = null;
-        let balón = { x: 400, y: 250, vx: 0, vy: 0, radio: 6 };
+        let equipoLocal = [];
+        let equipoRival = [];
+        let jugadorHumano = null;
+        let balon = { x: 450, y: 250, vx: 0, vy: 0, radio: 6 };
+        let golesLocal = 0;
+        let golesRival = 0;
         let teclas = {};
 
         window.addEventListener("keydown", e => teclas[e.key] = true);
@@ -107,138 +115,216 @@
 
         function iniciarJuego() {
             const rolElegido = document.getElementById("posicionSelect").value;
-            
-            // Selección aleatoria de formación por el DT
-            const formacionDT = formaciones[Math.floor(Math.random() * formaciones.length)];
-            
+            const formacionLocal = formaciones[Math.floor(Math.random() * formaciones.length)];
+            const formacionRival = formaciones[Math.floor(Math.random() * formaciones.length)];
+
             document.getElementById("menu").style.display = "none";
             canvas.style.display = "block";
+            document.getElementById("marcador").style.display = "block";
             document.getElementById("info").style.display = "block";
 
-            // Crear los 12 jugadores según la formación
+            // Crear equipo Local (Rojo)
             let asignado = false;
-            jugadores = formacionDT.posiciones.map((p, index) => {
-                let esJugador = false;
-                if (!asignado && (p.rol === rolElegido || index === formacionDT.posiciones.length - 1)) {
-                    esJugador = true;
+            equipoLocal = formacionLocal.posiciones.map((p, index) => {
+                let esHumano = false;
+                if (!asignado && (p.rol === rolElegido || index === formacionLocal.posiciones.length - 1)) {
+                    esHumano = true;
                     asignado = true;
                 }
-
-                const jugadorObj = {
-                    x: p.x,
-                    y: p.y,
-                    baseX: p.x,
-                    baseY: p.y,
-                    rol: p.rol,
-                    radio: 12,
-                    esHumano: esJugador,
-                    color: esJugador ? "#ff3333" : "#3388ff"
+                const jug = {
+                    x: p.x, y: p.y, baseX: p.x, baseY: p.y, rol: p.rol,
+                    radio: 12, esHumano: esHumano, equipo: "local", color: esHumano ? "#ff3333" : "#cc0000"
                 };
-
-                if (esJugador) jugadorControlado = jugadorObj;
-                return jugadorObj;
+                if (esHumano) jugadorHumano = jug;
+                return jug;
             });
 
-            // Añadir rival para completar 12 bolitas en campo
-            jugadores.push({
-                x: 750, y: 250, baseX: 750, baseY: 250, rol: "POR_RIVAL", radio: 12, esHumano: false, color: "#ffff33"
+            // Crear equipo Rival (Azul) - Espejo del campo
+            equipoRival = formacionRival.posiciones.map(p => {
+                const rx = canvas.width - p.x;
+                return {
+                    x: rx, y: p.y, baseX: rx, baseY: p.y, rol: p.rol,
+                    radio: 12, esHumano: false, equipo: "rival", color: "#3388ff"
+                };
             });
 
             bucleJuego();
         }
 
-        function actualizar() {
-            // Movimiento del jugador controlado
-            if (jugadorControlado) {
-                const velocidad = 3;
-                if (teclas["ArrowUp"] || teclas["w"]) jugadorControlado.y -= velocidad;
-                if (teclas["ArrowDown"] || teclas["s"]) jugadorControlado.y += velocidad;
-                if (teclas["ArrowLeft"] || teclas["a"]) jugadorControlado.x -= velocidad;
-                if (teclas["ArrowRight"] || teclas["d"]) jugadorControlado.x += velocidad;
+        function moverIA(jugador, arcoAtacarX, arcoDefenderX) {
+            let distBalon = Math.hypot(balon.x - jugador.x, balon.y - jugador.y);
+            let objetivoX = jugador.baseX;
+            let objetivoY = jugador.baseY;
 
-                // Restricciones de campo
-                jugadorControlado.x = Math.max(12, Math.min(canvas.width - 12, jugadorControlado.x));
-                jugadorControlado.y = Math.max(12, Math.min(canvas.height - 12, jugadorControlado.y));
+            // Comportamientos por Posición
+            switch (jugador.rol) {
+                case "POR":
+                    // Se mueve verticalmente cubriendo la portería según el balón
+                    objetivoX = jugador.baseX;
+                    objetivoY = Math.max(180, Math.min(320, balon.y));
+                    if (distBalon < 80) { objetivoX = balon.x; objetivoY = balon.y; }
+                    break;
+
+                case "DEF":
+                    // Tapa remates y despeja
+                    objetivoX = jugador.baseX + (balon.x - jugador.baseX) * 0.3;
+                    if (distBalon < 120) { objetivoX = balon.x; objetivoY = balon.y; }
+                    break;
+
+                case "LAT":
+                    // Recorre las bandas
+                    objetivoY = jugador.baseY + (balon.y - jugador.baseY) * 0.4;
+                    if (distBalon < 100) { objetivoX = balon.x; objetivoY = balon.y; }
+                    break;
+
+                case "PIV":
+                case "MC":
+                    // Conectan y recuperan
+                    objetivoX = jugador.baseX + (balon.x - jugador.baseX) * 0.5;
+                    if (distBalon < 150) { objetivoX = balon.x; objetivoY = balon.y; }
+                    break;
+
+                case "MPO":
+                case "EXT":
+                case "DEL":
+                    // Atacan hacia el arco contrario
+                    if (distBalon < 200) {
+                        objetivoX = balon.x;
+                        objetivoY = balon.y;
+                    } else {
+                        objetivoX = jugador.baseX + (arcoAtacarX - jugador.baseX) * 0.2;
+                    }
+                    break;
             }
 
-            // Comportamiento básico IA para el resto de bolitas
-            jugadores.forEach(j => {
-                if (!j.esHumano) {
-                    // Mantener posición según su rol
-                    let dx = j.baseX - j.x;
-                    let dy = j.baseY - j.y;
-                    j.x += dx * 0.02;
-                    j.y += dy * 0.02;
+            // Movimiento fluido hacia el objetivo
+            jugador.x += (objetivoX - jugador.x) * 0.04;
+            jugador.y += (objetivoY - jugador.y) * 0.04;
+        }
+
+        function resolverColision(jugador) {
+            let dist = Math.hypot(balon.x - jugador.x, balon.y - jugador.y);
+            if (dist < jugador.radio + balon.radio) {
+                let angulo = Math.atan2(balon.y - jugador.y, balon.x - jugador.x);
+                let fuerza = 5;
+
+                // Si es un atacante cerca del arco rival, tira a puerta
+                if (["DEL", "EXT", "MPO"].includes(jugador.rol)) {
+                    let destinoX = jugador.equipo === "local" ? canvas.width : 0;
+                    angulo = Math.atan2(250 - jugador.y, destinoX - jugador.x);
+                    fuerza = 7;
                 }
 
-                // Colisión con el balón
-                let distBalon = Math.hypot(j.x - balón.x, j.y - balón.y);
-                if (distBalon < j.radio + balón.radio) {
-                    balón.vx = (balón.x - j.x) * 0.4;
-                    balón.vy = (balón.y - j.y) * 0.4;
-                }
+                balon.vx = Math.cos(angulo) * fuerza;
+                balon.vy = Math.sin(angulo) * fuerza;
+            }
+        }
+
+        function reiniciar() {
+            balon.x = canvas.width / 2;
+            balon.y = canvas.height / 2;
+            balon.vx = 0;
+            balon.vy = 0;
+            [...equipoLocal, ...equipoRival].forEach(j => {
+                j.x = j.baseX;
+                j.y = j.baseY;
+            });
+        }
+
+        function actualizar() {
+            // Control Humano
+            if (jugadorHumano) {
+                const vel = 3.5;
+                if (teclas["ArrowUp"] || teclas["w"]) jugadorHumano.y -= vel;
+                if (teclas["ArrowDown"] || teclas["s"]) jugadorHumano.y += vel;
+                if (teclas["ArrowLeft"] || teclas["a"]) jugadorHumano.x -= vel;
+                if (teclas["ArrowRight"] || teclas["d"]) jugadorHumano.x += vel;
+
+                jugadorHumano.x = Math.max(12, Math.min(canvas.width - 12, jugadorHumano.x));
+                jugadorHumano.y = Math.max(12, Math.min(canvas.height - 12, jugadorHumano.y));
+            }
+
+            // Mover IAs
+            equipoLocal.forEach(j => {
+                if (!j.esHumano) moverIA(j, canvas.width, 0);
+                resolverColision(j);
+            });
+
+            equipoRival.forEach(j => {
+                moverIA(j, 0, canvas.width);
+                resolverColision(j);
             });
 
             // Físicas del balón
-            balón.x += balón.vx;
-            balón.y += balón.vy;
-            balón.vx *= 0.95;
-            balón.vy *= 0.95;
+            balon.x += balon.vx;
+            balon.y += balon.vy;
+            balon.vx *= 0.96;
+            balon.vy *= 0.96;
 
-            // Límites del balón en campo
-            if (balón.x < 6 || balón.x > canvas.width - 6) balón.vx *= -1;
-            if (balón.y < 6 || balón.y > canvas.height - 6) balón.vy *= -1;
-        }
+            // Detección de Goles (Porterías)
+            if (balon.y > 170 && balon.y < 330) {
+                if (balon.x <= 5) {
+                    golesRival++;
+                    document.getElementById("golRival").innerText = golesRival;
+                    reiniciar();
+                } else if (balon.x >= canvas.width - 5) {
+                    golesLocal++;
+                    document.getElementById("golLocal").innerText = golesLocal;
+                    reiniciar();
+                }
+            }
 
-        function dibujarCampo() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Líneas del campo
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
-            ctx.lineWidth = 2;
-
-            // Línea central
-            ctx.beginPath();
-            ctx.moveTo(canvas.width / 2, 0);
-            ctx.lineTo(canvas.width / 2, canvas.height);
-            ctx.stroke();
-
-            // Círculo central
-            ctx.beginPath();
-            ctx.arc(canvas.width / 2, canvas.height / 2, 60, 0, Math.PI * 2);
-            ctx.stroke();
-
-            // Área grande izquierda (Portero)
-            ctx.strokeRect(0, 125, 100, 250);
+            // Rebotes en bordes fuera de las porterías
+            if (balon.x < 6 || balon.x > canvas.width - 6) balon.vx *= -1;
+            if (balon.y < 6 || balon.y > canvas.height - 6) balon.vy *= -1;
         }
 
         function renderizar() {
-            dibujarCampo();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Dibujar Balón
+            // Dibujar Campo y Porterías
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 2;
+
+            // Línea y Círculo Central
             ctx.beginPath();
-            ctx.arc(balón.x, balón.y, balón.radio, 0, Math.PI * 2);
-            ctx.fillStyle = "#ffffff";
-            ctx.fill();
-            ctx.strokeStyle = "#000000";
+            ctx.moveTo(canvas.width / 2, 0); ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.arc(canvas.width / 2, canvas.height / 2, 60, 0, Math.PI * 2);
             ctx.stroke();
 
+            // Áreas Grandes
+            ctx.strokeRect(0, 100, 120, 300);
+            ctx.strokeRect(canvas.width - 120, 100, 120, 300);
+
+            // Porterías (Arcos)
+            ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+            ctx.fillRect(0, 170, 15, 160);
+            ctx.fillRect(canvas.width - 15, 170, 15, 160);
+
             // Dibujar Jugadores
-            jugadores.forEach(j => {
+            [...equipoLocal, ...equipoRival].forEach(j => {
                 ctx.beginPath();
                 ctx.arc(j.x, j.y, j.radio, 0, Math.PI * 2);
                 ctx.fillStyle = j.color;
                 ctx.fill();
-                ctx.strokeStyle = "#ffffff";
-                ctx.lineWidth = 2;
+                ctx.strokeStyle = j.esHumano ? "#ffff00" : "#ffffff";
+                ctx.lineWidth = j.esHumano ? 3 : 1.5;
                 ctx.stroke();
 
-                // Etiqueta de Rol
+                // Etiqueta
                 ctx.fillStyle = "#ffffff";
                 ctx.font = "10px sans-serif";
                 ctx.textAlign = "center";
                 ctx.fillText(j.rol, j.x, j.y - 15);
             });
+
+            // Dibujar Balón
+            ctx.beginPath();
+            ctx.arc(balon.x, balon.y, balon.radio, 0, Math.PI * 2);
+            ctx.fillStyle = "#ffffff";
+            ctx.fill();
+            ctx.strokeStyle = "#000000";
+            ctx.stroke();
         }
 
         function bucleJuego() {
