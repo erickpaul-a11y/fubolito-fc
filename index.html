@@ -2,182 +2,887 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Fútbol IA - Versión Avanzada</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Football Career Simulator</title>
 
 <style>
-    * {
-        box-sizing: border-box;
+*{box-sizing:border-box}
+
+body{
+    margin:0;
+    background:#08120b;
+    color:white;
+    font-family:Arial,Helvetica,sans-serif;
+    overflow:hidden;
+}
+
+button,select{
+    font:inherit;
+}
+
+button{
+    cursor:pointer;
+    border:0;
+    border-radius:8px;
+    padding:10px 16px;
+    background:#16833b;
+    color:white;
+    font-weight:bold;
+}
+
+button:hover{
+    background:#20a64d;
+}
+
+#menu{
+    position:fixed;
+    inset:0;
+    z-index:100;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:
+        radial-gradient(circle at center,#173e22,#050905 75%);
+}
+
+.panel{
+    width:min(900px,94vw);
+    max-height:94vh;
+    overflow:auto;
+    padding:30px;
+    border-radius:18px;
+    background:rgba(10,22,13,.96);
+    border:1px solid #2b713e;
+    box-shadow:0 20px 80px #000;
+}
+
+h1{
+    margin-top:0;
+    color:#52e878;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+    gap:15px;
+}
+
+.field{
+    display:flex;
+    flex-direction:column;
+    gap:7px;
+}
+
+select{
+    background:#111d14;
+    color:white;
+    border:1px solid #34553c;
+    border-radius:7px;
+    padding:10px;
+}
+
+#game{
+    display:none;
+    width:100vw;
+    height:100vh;
+    position:relative;
+}
+
+#gameCanvas{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    background:#137333;
+}
+
+#hud{
+    position:absolute;
+    left:15px;
+    top:15px;
+    z-index:5;
+    width:310px;
+    background:rgba(5,12,7,.88);
+    border:1px solid #35653f;
+    border-radius:12px;
+    padding:12px;
+    pointer-events:none;
+}
+
+#rightHud{
+    position:absolute;
+    right:15px;
+    top:15px;
+    z-index:5;
+    width:270px;
+    background:rgba(5,12,7,.88);
+    border:1px solid #35653f;
+    border-radius:12px;
+    padding:12px;
+}
+
+#bottomHud{
+    position:absolute;
+    left:50%;
+    bottom:15px;
+    transform:translateX(-50%);
+    z-index:5;
+    background:rgba(5,12,7,.88);
+    border:1px solid #35653f;
+    border-radius:12px;
+    padding:10px 18px;
+}
+
+.stat{
+    display:flex;
+    justify-content:space-between;
+    margin:4px 0;
+}
+
+.good{color:#54ed7b}
+.bad{color:#ff6969}
+.yellow{color:#ffd84d}
+
+#careerPanel{
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:200;
+    background:rgba(0,0,0,.8);
+    align-items:center;
+    justify-content:center;
+}
+
+.careerBox{
+    width:min(1000px,95vw);
+    max-height:90vh;
+    overflow:auto;
+    background:#0c180f;
+    border:1px solid #387748;
+    border-radius:16px;
+    padding:25px;
+}
+
+.tabs{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-bottom:15px;
+}
+
+.tab{
+    background:#17291b;
+}
+
+.tab.active{
+    background:#218c42;
+}
+
+.page{
+    display:none;
+}
+
+.page.active{
+    display:block;
+}
+
+.card{
+    background:#132318;
+    border:1px solid #294f32;
+    border-radius:10px;
+    padding:14px;
+    margin:8px 0;
+}
+
+.event{
+    border-left:4px solid #54db73;
+    padding-left:12px;
+}
+
+#notification{
+    position:fixed;
+    top:25px;
+    left:50%;
+    transform:translateX(-50%);
+    z-index:500;
+    display:none;
+    background:#111d14;
+    border:1px solid #54db73;
+    border-radius:10px;
+    padding:14px 22px;
+    box-shadow:0 10px 40px #000;
+}
+
+.small{
+    color:#9ab29e;
+    font-size:13px;
+}
+
+@media(max-width:700px){
+    #hud{
+        width:220px;
+        font-size:12px;
     }
 
-    body {
-        margin: 0;
-        background: #101820;
-        color: white;
-        font-family: Arial, sans-serif;
-        overflow: hidden;
+    #rightHud{
+        width:190px;
+        font-size:12px;
     }
-
-    #menu {
-        position: fixed;
-        z-index: 20;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        background: rgba(10, 15, 20, 0.96);
-        padding: 30px;
-        border-radius: 18px;
-        text-align: center;
-        box-shadow: 0 0 40px rgba(0,0,0,.6);
-    }
-
-    #menu h1 {
-        margin-top: 0;
-        color: #ffd900;
-    }
-
-    #menu select,
-    #menu button {
-        width: 260px;
-        padding: 13px;
-        margin-top: 12px;
-        border-radius: 8px;
-        border: none;
-        font-size: 16px;
-    }
-
-    #menu button {
-        background: #e51c23;
-        color: white;
-        font-weight: bold;
-        cursor: pointer;
-    }
-
-    #menu button:hover {
-        background: #ff3038;
-    }
-
-    #marcador {
-        display: none;
-        position: fixed;
-        z-index: 10;
-        top: 15px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(0,0,0,.75);
-        padding: 10px 25px;
-        border-radius: 12px;
-        font-size: 22px;
-        font-weight: bold;
-    }
-
-    #info {
-        display: none;
-        position: fixed;
-        z-index: 10;
-        bottom: 15px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(0,0,0,.75);
-        padding: 9px 18px;
-        border-radius: 10px;
-        font-size: 14px;
-    }
-
-    #campo {
-        display: none;
-        position: fixed;
-        left: 0;
-        top: 0;
-        background: #278c42;
-    }
+}
 </style>
 </head>
 
 <body>
 
+<!-- =========================================================
+     MENÚ DE CARRERA
+========================================================= -->
+
 <div id="menu">
 
-    <h1>⚽ FÚTBOL IA</h1>
+<div class="panel">
 
-    <p>Elige tu posición</p>
+<h1>⚽ Football Career Simulator</h1>
 
-    <select id="posicionSelect">
-        <option value="POR">Portero</option>
-        <option value="DEF">Defensa central</option>
-        <option value="LAT">Lateral</option>
-        <option value="PIV">Mediocentro defensivo</option>
-        <option value="MC">Mediocampista</option>
-        <option value="MPO">Mediapunta</option>
-        <option value="EXT">Extremo</option>
-        <option value="DEL">Delantero</option>
-    </select>
+<p>
+Construye tu carrera desde la cantera. Cada partida genera un mundo
+diferente.
+</p>
 
-    <br>
+<div class="grid">
 
-    <button onclick="iniciarJuego()">
-        Iniciar Partido
-    </button>
+<div class="field">
+<label>🌎 País</label>
+<select id="country">
+<option>Brasil</option>
+<option>Argentina</option>
+<option>España</option>
+<option>Inglaterra</option>
+<option>Francia</option>
+<option>Italia</option>
+<option>Alemania</option>
+<option>Portugal</option>
+<option>Países Bajos</option>
+</select>
+</div>
+
+<div class="field">
+<label>🏆 Liga</label>
+<select id="league">
+<option>Primera división</option>
+<option>Segunda división</option>
+<option>Tercera división</option>
+</select>
+</div>
+
+<div class="field">
+<label>🏟️ Club</label>
+<select id="clubMode">
+<option>Aleatorio</option>
+<option>Club grande</option>
+<option>Club de cantera</option>
+<option>Club pequeño</option>
+</select>
+</div>
+
+<div class="field">
+<label>👦 Edad inicial</label>
+<select id="age">
+<option>15</option>
+<option>16</option>
+<option>17</option>
+</select>
+</div>
+
+<div class="field">
+<label>📍 Posición</label>
+<select id="position">
+<option>POR</option>
+<option>DEF</option>
+<option>LAT</option>
+<option>PIV</option>
+<option>MC</option>
+<option>MPO</option>
+<option>EXT</option>
+<option>DEL</option>
+</select>
+</div>
+
+</div>
+
+<br>
+
+<button onclick="crearCarrera()">
+🚀 COMENZAR CARRERA
+</button>
+
+</div>
+</div>
+
+
+<!-- =========================================================
+     JUEGO
+========================================================= -->
+
+<div id="game">
+
+<canvas id="gameCanvas" width="2100" height="1200"></canvas>
+
+<div id="hud">
+
+<div><b id="playerName">Jugador</b></div>
+
+<div class="small" id="clubName">Club</div>
+
+<hr>
+
+<div class="stat">
+<span>Edad</span>
+<span id="playerAge">15</span>
+</div>
+
+<div class="stat">
+<span>Valoración</span>
+<span id="playerRating">60</span>
+</div>
+
+<div class="stat">
+<span>Potencial</span>
+<span id="playerPotential">?</span>
+</div>
+
+<div class="stat">
+<span>Confianza entrenador</span>
+<span id="confidence">20%</span>
+</div>
+
+<div class="stat">
+<span>Forma</span>
+<span id="form">75</span>
+</div>
+
+<div class="stat">
+<span>Fatiga</span>
+<span id="fatigue">10</span>
+</div>
 
 </div>
 
 
-<div id="marcador">
-    🔴 Local
-    <span id="golLocal">0</span>
-    -
-    <span id="golRival">0</span>
-    Rival 🔵
+<div id="rightHud">
+
+<b>📅 Carrera</b>
+
+<div id="date"></div>
+
+<hr>
+
+<div>
+🏆 <span id="competition">Liga</span>
+</div>
+
+<div>
+🔴 <span id="score">0 - 0</span>
+</div>
+
+<hr>
+
+<button onclick="abrirCarrera()">
+📋 Carrera
+</button>
+
+<button onclick="terminarPartido()" style="margin-top:8px">
+⏭️ Simular día
+</button>
+
 </div>
 
 
-<canvas id="campo" width="2100" height="1200"></canvas>
-
-
-<div id="info">
-    WASD / Flechas = mover
-    &nbsp; | &nbsp;
-    ESPACIO = pase
-    &nbsp; | &nbsp;
-    E = sprint
+<div id="bottomHud">
+WASD / Flechas = mover &nbsp; | &nbsp;
+ESPACIO = pasar / chutar
 </div>
+
+</div>
+
+
+<!-- =========================================================
+     PANEL DE CARRERA
+========================================================= -->
+
+<div id="careerPanel">
+
+<div class="careerBox">
+
+<h2 id="careerTitle">Mi carrera</h2>
+
+<div class="tabs">
+
+<button class="tab active" onclick="mostrarPagina('perfil',this)">
+👤 Perfil
+</button>
+
+<button class="tab" onclick="mostrarPagina('entreno',this)">
+🏃 Entrenamiento
+</button>
+
+<button class="tab" onclick="mostrarPagina('equipo',this)">
+👥 Equipo
+</button>
+
+<button class="tab" onclick="mostrarPagina('eventos',this)">
+📰 Eventos
+</button>
+
+</div>
+
+
+<div id="perfil" class="page active"></div>
+
+<div id="entreno" class="page">
+
+<h3>🏃 Entrenamiento</h3>
+
+<p>
+El entrenamiento aumenta tus atributos, pero también genera fatiga.
+El rendimiento afecta a la confianza del entrenador.
+</p>
+
+<button onclick="entrenar('pase')">🎯 Pase</button>
+<button onclick="entrenar('tiro')">🥅 Tiro</button>
+<button onclick="entrenar('regate')">🕺 Regate</button>
+<button onclick="entrenar('fisico')">🏃 Físico</button>
+<button onclick="entrenar('tactica')">🧠 Táctica</button>
+<button onclick="entrenar('descanso')">😴 Descansar</button>
+
+<div id="trainingResult" class="card"></div>
+
+</div>
+
+
+<div id="equipo" class="page">
+
+<h3>👥 Plantilla</h3>
+
+<div id="teamList"></div>
+
+</div>
+
+
+<div id="eventos" class="page">
+
+<h3>📰 Historia reciente</h3>
+
+<div id="eventList"></div>
+
+</div>
+
+<br>
+
+<button onclick="cerrarCarrera()">
+Volver al partido
+</button>
+
+</div>
+</div>
+
+
+<div id="notification"></div>
 
 
 <script>
 
 /* =========================================================
-   CONFIGURACIÓN GENERAL
+   CONFIGURACIÓN DEL MUNDO
 ========================================================= */
 
-const canvas = document.getElementById("campo");
+const FIELD_W = 2100;
+const FIELD_H = 1200;
+
+const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-const W = 2100;
-const H = 1200;
+let camera = {
+    x: FIELD_W / 2,
+    y: FIELD_H / 2,
+    zoom: 1
+};
 
-const CENTRO_X = W / 2;
-const CENTRO_Y = H / 2;
+let keys = {};
 
-const MARGEN = 45;
-
+let mundo = null;
+let jugadorHumano = null;
 let equipoLocal = [];
 let equipoRival = [];
-let todosLosJugadores = [];
 
-let jugadorHumano = null;
-
-let partidoIniciado = false;
+let partidoActivo = false;
 
 let golesLocal = 0;
 let golesRival = 0;
 
-let teclas = {};
+let eventos = [];
 
-let camara = {
-    x: 0,
-    y: 0
-};
+
+/* =========================================================
+   GENERADOR PROCEDURAL
+========================================================= */
+
+let seed = Math.floor(Math.random()*999999999);
+
+function random(){
+    seed = (seed * 9301 + 49297) % 233280;
+    return seed / 233280;
+}
+
+function rango(a,b){
+    return Math.floor(random()*(b-a+1))+a;
+}
+
+function elegir(array){
+    return array[Math.floor(random()*array.length)];
+}
+
+
+/* =========================================================
+   NOMBRES
+========================================================= */
+
+const nombres = [
+"Lucas","Mateo","Thiago","Gabriel","João","Pedro","Nicolas",
+"Arthur","Diego","Enzo","Rafael","Bruno","Marco","Leo",
+"Alex","Daniel","Miguel","Santiago","Samuel","Matías",
+"Tomás","Andrés","David","Ángel","Adrián","Hugo"
+];
+
+const apellidos = [
+"Silva","Santos","Oliveira","Costa","Mendes","Ferreira",
+"Martins","Rossi","Garcia","Fernandez","Gomez","Pereira",
+"Almeida","Carvalho","Rodriguez","Torres","Moreira","Lopes"
+];
+
+function generarNombre(){
+    return elegir(nombres)+" "+elegir(apellidos);
+}
+
+
+/* =========================================================
+   ESPECIALIDADES
+========================================================= */
+
+const especialidades = [
+"Regateador",
+"Organizador",
+"Pase filtrado",
+"Finalizador",
+"Rematador lejano",
+"Recuperador",
+"Destructor",
+"Creador",
+"Especialista en centros",
+"Velocista",
+"Jugador físico",
+"Controlador",
+"Especialista balón parado",
+"Defensa anticipador",
+"Central constructor",
+"Lateral ofensivo",
+"Portero-líbero",
+"Segundo delantero",
+"Falso nueve",
+"Especialista aéreo"
+];
+
+const estilos = [
+"Posesión",
+"Vertical",
+"Contraataque",
+"Juego directo",
+"Libre",
+"Defensivo",
+"Ofensivo",
+"Equilibrado",
+"Presión alta",
+"Bloque bajo"
+];
+
+const personalidades = [
+"Competitivo",
+"Tranquilo",
+"Ambicioso",
+"Impulsivo",
+"Disciplinado",
+"Creativo",
+"Trabajador",
+"Individualista",
+"Líder",
+"Tímido"
+];
+
+
+/* =========================================================
+   CLUBES
+========================================================= */
+
+const prefijosClub = [
+"Atlético",
+"Real",
+"Deportivo",
+"Sporting",
+"Unión",
+"Futuro",
+"Estrella",
+"Juventud",
+"Imperial",
+"Central"
+];
+
+const sufijosClub = [
+"Central",
+"Horizonte",
+"Norte",
+"Sur",
+"Verde",
+"Azul",
+"Metropolitano",
+"Futbol Club",
+"United",
+"Estrella"
+];
+
+function generarClub(){
+
+    return {
+        nombre:elegir(prefijosClub)+" "+elegir(sufijosClub),
+
+        fundacion:rango(1890,2020),
+
+        filosofia:elegir(estilos),
+
+        cantera:rango(30,95),
+
+        presupuesto:rango(20,95),
+
+        reputacion:rango(30,95),
+
+        aficion:rango(30,100),
+
+        rivalidad:elegir(prefijosClub)+" "+elegir(sufijosClub)
+    };
+}
+
+
+/* =========================================================
+   ENTRENADORES
+========================================================= */
+
+function generarEntrenador(){
+
+    return {
+
+        nombre:generarNombre(),
+
+        filosofia:elegir(estilos),
+
+        paciencia:rango(20,90),
+
+        cantera:rango(10,95),
+
+        veteranos:rango(10,90),
+
+        toleranciaErrores:rango(10,90),
+
+        exigencia:rango(30,100),
+
+        favorito:null
+
+    };
+}
+
+
+/* =========================================================
+   JUGADORES
+========================================================= */
+
+function atributoBase(){
+    return rango(35,82);
+}
+
+function generarJugador(equipo,posicion){
+
+    let edad = rango(15,34);
+
+    let jugador = {
+
+        id:
+            Date.now().toString(36)+
+            Math.floor(random()*999999999).toString(36),
+
+        nombre:generarNombre(),
+
+        edad,
+
+        posicion,
+
+        equipo,
+
+        pie:random()<.75?"Derecho":"Izquierdo",
+
+        velocidad:atributoBase(),
+        aceleracion:atributoBase(),
+        pase:atributoBase(),
+        tiro:atributoBase(),
+        regate:atributoBase(),
+        defensa:atributoBase(),
+        fisico:atributoBase(),
+        control:atributoBase(),
+
+        especialidad:elegir(especialidades),
+
+        estilo:elegir(estilos),
+
+        personalidad:elegir(personalidades),
+
+        forma:rango(55,90),
+
+        fatiga:rango(0,30),
+
+        confianza:rango(30,80),
+
+        potencial:rango(55,94),
+
+        tieneBalon:false,
+
+        x:0,
+        y:0,
+
+        baseX:0,
+        baseY:0,
+
+        objetivoX:0,
+        objetivoY:0,
+
+        decision:rango(20,80),
+
+        ultimoPase:0
+
+    };
+
+    jugador.rating = calcularRating(jugador);
+
+    return jugador;
+}
+
+
+function calcularRating(j){
+
+    let valores=[];
+
+    switch(j.posicion){
+
+        case"POR":
+            valores=[
+                j.control,
+                j.defensa,
+                j.fisico,
+                j.pase
+            ];
+            break;
+
+        case"DEF":
+            valores=[
+                j.defensa,
+                j.fisico,
+                j.control,
+                j.pase
+            ];
+            break;
+
+        case"LAT":
+            valores=[
+                j.defensa,
+                j.velocidad,
+                j.aceleracion,
+                j.pase,
+                j.fisico
+            ];
+            break;
+
+        case"PIV":
+            valores=[
+                j.defensa,
+                j.pase,
+                j.control,
+                j.fisico
+            ];
+            break;
+
+        case"MC":
+            valores=[
+                j.pase,
+                j.control,
+                j.regate,
+                j.fisico
+            ];
+            break;
+
+        case"MPO":
+            valores=[
+                j.pase,
+                j.regate,
+                j.control,
+                j.tiro
+            ];
+            break;
+
+        case"EXT":
+            valores=[
+                j.velocidad,
+                j.aceleracion,
+                j.regate,
+                j.pase,
+                j.tiro
+            ];
+            break;
+
+        case"DEL":
+            valores=[
+                j.tiro,
+                j.control,
+                j.regate,
+                j.fisico
+            ];
+            break;
+    }
+
+    return Math.round(
+        valores.reduce((a,b)=>a+b,0)/valores.length
+    );
+}
+
+
+/* =========================================================
+   FORMACIONES
+========================================================= */
+
+const formacion = [
+
+    {rol:"POR",x:110,y:600},
+
+    {rol:"LAT",x:390,y:170},
+    {rol:"DEF",x:360,y:440},
+    {rol:"DEF",x:360,y:760},
+    {rol:"LAT",x:390,y:1030},
+
+    {rol:"PIV",x:690,y:600},
+
+    {rol:"MC",x:880,y:390},
+    {rol:"MC",x:880,y:810},
+
+    {rol:"EXT",x:1150,y:180},
+    {rol:"DEL",x:1250,y:600},
+    {rol:"EXT",x:1150,y:1020}
+
+];
 
 
 /* =========================================================
@@ -186,399 +891,263 @@ let camara = {
 
 const balon = {
 
-    x: CENTRO_X,
-    y: CENTRO_Y,
+    x:FIELD_W/2,
+    y:FIELD_H/2,
 
-    vx: 0,
-    vy: 0,
+    vx:0,
+    vy:0,
 
-    radio: 11,
+    radio:10,
 
-    poseedor: null,
+    poseedor:null,
 
-    cooldown: 0
+    cooldown:0
 
 };
+
+
+/* =========================================================
+   CREAR EQUIPO
+========================================================= */
+
+function crearEquipo(nombreEquipo,local){
+
+    let equipo=[];
+
+    formacion.forEach((p,i)=>{
+
+        let x=local?p.x:FIELD_W-p.x;
+
+        let jugador=generarJugador(
+            nombreEquipo,
+            p.rol
+        );
+
+        jugador.x=x;
+        jugador.y=p.y;
+
+        jugador.baseX=x;
+        jugador.baseY=p.y;
+
+        jugador.objetivoX=x;
+        jugador.objetivoY=p.y;
+
+        equipo.push(jugador);
+
+    });
+
+    return equipo;
+}
+
+
+/* =========================================================
+   CREAR CARRERA
+========================================================= */
+
+function crearCarrera(){
+
+    seed=Math.floor(Math.random()*2147483647);
+
+    const pais=document.getElementById("country").value;
+    const liga=document.getElementById("league").value;
+    const edad=Number(document.getElementById("age").value);
+    const posicion=document.getElementById("position").value;
+
+    const club=generarClub();
+
+    const entrenador=generarEntrenador();
+
+    entrenador.favorito=null;
+
+    mundo={
+
+        seed,
+
+        pais,
+
+        liga,
+
+        club,
+
+        entrenador,
+
+        edadJugador:edad,
+
+        posicion,
+
+        año:2026,
+
+        mes:rango(1,12),
+
+        dia:rango(1,28),
+
+        dias:0
+
+    };
+
+    equipoLocal=crearEquipo(club.nombre,true);
+
+    equipoRival=crearEquipo(
+        generarClub().nombre,
+        false
+    );
+
+    jugadorHumano=equipoLocal.find(
+        j=>j.posicion===posicion
+    );
+
+    if(!jugadorHumano){
+
+        jugadorHumano=equipoLocal[9];
+
+    }
+
+    jugadorHumano.edad=edad;
+
+    jugadorHumano.nombre=generarNombre();
+
+    jugadorHumano.potencial=rango(70,98);
+
+    jugadorHumano.confianza=20;
+
+    jugadorHumano.forma=75;
+
+    jugadorHumano.rating=calcularRating(jugadorHumano);
+
+    mundo.club.nombre=club.nombre;
+
+    mundo.club.entrenador=entrenador;
+
+    eventos=[];
+
+    evento(
+        "🌱 Has comenzado tu carrera como canterano."
+    );
+
+    document.getElementById("menu").style.display="none";
+    document.getElementById("game").style.display="block";
+
+    iniciarPartido();
+
+    actualizarHUD();
+
+}
+
+
+/* =========================================================
+   PARTIDO
+========================================================= */
+
+function iniciarPartido(){
+
+    partidoActivo=true;
+
+    golesLocal=0;
+    golesRival=0;
+
+    equipoLocal.forEach(j=>{
+        j.tieneBalon=false;
+        j.x=j.baseX;
+        j.y=j.baseY;
+    });
+
+    equipoRival.forEach(j=>{
+        j.tieneBalon=false;
+        j.x=j.baseX;
+        j.y=j.baseY;
+    });
+
+    balon.poseedor=null;
+
+    balon.x=FIELD_W/2;
+    balon.y=FIELD_H/2;
+
+    balon.vx=0;
+    balon.vy=0;
+
+    jugadorHumano.x=FIELD_W/2-80;
+    jugadorHumano.y=FIELD_H/2;
+
+    setTimeout(()=>{
+
+        balon.poseedor=jugadorHumano;
+        jugadorHumano.tieneBalon=true;
+
+    },700);
+
+}
 
 
 /* =========================================================
    CONTROLES
 ========================================================= */
 
-window.addEventListener("keydown", e => {
+window.addEventListener("keydown",e=>{
 
-    const tecla = e.key.toLowerCase();
+    keys[e.key.toLowerCase()]=true;
 
-    teclas[tecla] = true;
+    if([
+        "arrowup",
+        "arrowdown",
+        "arrowleft",
+        "arrowright",
+        " "
+    ].includes(e.key.toLowerCase())){
 
-    if (
-        tecla === " " ||
-        tecla === "arrowup" ||
-        tecla === "arrowdown" ||
-        tecla === "arrowleft" ||
-        tecla === "arrowright"
-    ) {
         e.preventDefault();
+
     }
 
 });
 
+window.addEventListener("keyup",e=>{
 
-window.addEventListener("keyup", e => {
-
-    teclas[e.key.toLowerCase()] = false;
+    keys[e.key.toLowerCase()]=false;
 
 });
-
-
-/* =========================================================
-   FORMACIONES
-========================================================= */
-
-const formacion433 = [
-
-    {
-        rol: "POR",
-        x: 120,
-        y: 600
-    },
-
-    {
-        rol: "LAT",
-        x: 390,
-        y: 170
-    },
-
-    {
-        rol: "DEF",
-        x: 360,
-        y: 450
-    },
-
-    {
-        rol: "DEF",
-        x: 360,
-        y: 750
-    },
-
-    {
-        rol: "LAT",
-        x: 390,
-        y: 1030
-    },
-
-    {
-        rol: "PIV",
-        x: 690,
-        y: 600
-    },
-
-    {
-        rol: "MC",
-        x: 850,
-        y: 380
-    },
-
-    {
-        rol: "MC",
-        x: 850,
-        y: 820
-    },
-
-    {
-        rol: "EXT",
-        x: 1180,
-        y: 150
-    },
-
-    {
-        rol: "DEL",
-        x: 1250,
-        y: 600
-    },
-
-    {
-        rol: "EXT",
-        x: 1180,
-        y: 1050
-    }
-
-];
-
-
-const formacion442 = [
-
-    {
-        rol: "POR",
-        x: 120,
-        y: 600
-    },
-
-    {
-        rol: "LAT",
-        x: 390,
-        y: 160
-    },
-
-    {
-        rol: "DEF",
-        x: 360,
-        y: 450
-    },
-
-    {
-        rol: "DEF",
-        x: 360,
-        y: 750
-    },
-
-    {
-        rol: "LAT",
-        x: 390,
-        y: 1040
-    },
-
-    {
-        rol: "EXT",
-        x: 730,
-        y: 170
-    },
-
-    {
-        rol: "MC",
-        x: 720,
-        y: 440
-    },
-
-    {
-        rol: "MC",
-        x: 720,
-        y: 760
-    },
-
-    {
-        rol: "EXT",
-        x: 730,
-        y: 1030
-    },
-
-    {
-        rol: "DEL",
-        x: 1200,
-        y: 440
-    },
-
-    {
-        rol: "DEL",
-        x: 1200,
-        y: 760
-    }
-
-];
-
-
-/* =========================================================
-   INICIAR PARTIDO
-========================================================= */
-
-function iniciarJuego() {
-
-    const rolElegido =
-        document.getElementById("posicionSelect").value;
-
-    document.getElementById("menu").style.display = "none";
-
-    document.getElementById("marcador").style.display = "block";
-
-    document.getElementById("info").style.display = "block";
-
-    canvas.style.display = "block";
-
-    const formacion =
-        Math.random() < 0.5
-            ? formacion433
-            : formacion442;
-
-
-    let asignado = false;
-
-
-    equipoLocal = formacion.map((p, i) => {
-
-        let humano = false;
-
-        if (!asignado && p.rol === rolElegido) {
-
-            humano = true;
-
-            asignado = true;
-
-        }
-
-        return crearJugador(
-            "L" + i,
-            p.rol,
-            p.x,
-            p.y,
-            "local",
-            humano
-        );
-
-    });
-
-
-    if (!jugadorHumano) {
-
-        jugadorHumano =
-            equipoLocal.find(j => j.esHumano);
-
-    }
-
-
-    equipoRival = formacion.map((p, i) => {
-
-        return crearJugador(
-            "R" + i,
-            p.rol,
-            W - p.x,
-            p.y,
-            "rival",
-            false
-        );
-
-    });
-
-
-    todosLosJugadores = [
-        ...equipoLocal,
-        ...equipoRival
-    ];
-
-
-    partidoIniciado = true;
-
-    reiniciarPartido();
-
-    requestAnimationFrame(bucleJuego);
-
-}
-
-
-/* =========================================================
-   CREAR JUGADOR
-========================================================= */
-
-function crearJugador(
-    id,
-    rol,
-    x,
-    y,
-    equipo,
-    humano
-) {
-
-    return {
-
-        id,
-
-        rol,
-
-        equipo,
-
-        x,
-        y,
-
-        baseX: x,
-        baseY: y,
-
-        esHumano: humano,
-
-        radio: 20,
-
-        color:
-            humano
-                ? "#ff3333"
-                : equipo === "local"
-                    ? "#c71919"
-                    : "#2878e8",
-
-        velocidad:
-            humano
-                ? 5.5
-                : 3.7,
-
-        sprint: 7,
-
-        objetivoX: x,
-        objetivoY: y,
-
-        decision: Math.random() * 100,
-
-        tieneBalon: false,
-
-        presionando: false,
-
-        energia: 100,
-
-        paseCooldown: 0,
-
-        roboCooldown: 0,
-
-        inteligencia:
-            0.75 + Math.random() * 0.25
-
-    };
-
-}
 
 
 /* =========================================================
    UTILIDADES
 ========================================================= */
 
-function limitar(v, min, max) {
+function distancia(a,b){
+
+    return Math.hypot(
+        a.x-b.x,
+        a.y-b.y
+    );
+
+}
+
+function limitar(v,min,max){
 
     return Math.max(
         min,
-        Math.min(max, v)
+        Math.min(max,v)
     );
 
 }
 
+function direccion(j){
 
-function distancia(a, b) {
-
-    return Math.hypot(
-        a.x - b.x,
-        a.y - b.y
-    );
+    return j.equipo===mundo.club.nombre?1:-1;
 
 }
 
+function equipoDe(j){
 
-function equipoDe(jugador) {
-
-    return jugador.equipo === "local"
-        ? equipoLocal
-        : equipoRival;
-
-}
-
-
-function rivalDe(jugador) {
-
-    return jugador.equipo === "local"
-        ? equipoRival
-        : equipoLocal;
+    return j.equipo===mundo.club.nombre
+        ?equipoLocal
+        :equipoRival;
 
 }
 
+function rivalesDe(j){
 
-function direccionAtaque(jugador) {
-
-    return jugador.equipo === "local"
-        ? 1
-        : -1;
+    return j.equipo===mundo.club.nombre
+        ?equipoRival
+        :equipoLocal;
 
 }
 
@@ -587,318 +1156,627 @@ function direccionAtaque(jugador) {
    IA PRINCIPAL
 ========================================================= */
 
-function actualizarIA(jugador) {
+function actualizarIA(j){
 
-    if (jugador.esHumano) {
-        return;
-    }
+    if(j===jugadorHumano)return;
 
+    const dir=direccion(j);
 
-    if (jugador.paseCooldown > 0) {
-        jugador.paseCooldown--;
-    }
+    const equipo=equipoDe(j);
 
+    const rival=rivalesDe(j);
 
-    if (jugador.roboCooldown > 0) {
-        jugador.roboCooldown--;
-    }
+    if(balon.poseedor===j){
 
-
-    /*
-       SI TIENE EL BALÓN
-    */
-
-    if (balon.poseedor === jugador) {
-
-        decidirConBalon(jugador);
+        decidirConBalon(j);
 
         return;
 
     }
 
+    /* PORTERO */
 
-    /*
-       SI SU EQUIPO TIENE EL BALÓN
-    */
+    if(j.posicion==="POR"){
 
-    if (
+        j.objetivoX=j.baseX;
+
+        j.objetivoY=
+            limitar(
+                balon.y,
+                380,
+                820
+            );
+
+        mover(j,.7);
+
+        return;
+
+    }
+
+
+    /* PRESIÓN */
+
+    if(
         balon.poseedor &&
-        balon.poseedor.equipo === jugador.equipo
-    ) {
+        balon.poseedor.equipo!==j.equipo &&
+        distancia(j,balon.poseedor)<260
+    ){
 
-        moverseEnAtaque(jugador);
+        j.objetivoX=
+            balon.poseedor.x-dir*20;
+
+        j.objetivoY=
+            balon.poseedor.y;
+
+        mover(j,.95);
 
         return;
 
     }
 
 
-    /*
-       SI EL RIVAL TIENE EL BALÓN
-    */
+    /* APOYO AL POSEEDOR */
 
-    if (
+    if(
         balon.poseedor &&
-        balon.poseedor.equipo !== jugador.equipo
-    ) {
+        balon.poseedor.equipo===j.equipo
+    ){
 
-        defenderEnEquipo(jugador);
+        buscarApoyo(j);
 
         return;
 
     }
 
 
-    /*
-       BALÓN SUELTO
-    */
+    /* DEFENSAS */
 
-    irAlBalonSiConviene(jugador);
+    if(
+        j.posicion==="DEF" ||
+        j.posicion==="PIV"
+    ){
+
+        defender(j);
+
+        return;
+
+    }
+
+
+    /* ATAQUE SIN BALÓN */
+
+    desmarcar(j);
 
 }
 
 
 /* =========================================================
-   DECISIÓN CON BALÓN
+   IA CON BALÓN
 ========================================================= */
 
-function decidirConBalon(jugador) {
+function decidirConBalon(j){
 
-    const dir =
-        direccionAtaque(jugador);
+    const dir=direccion(j);
 
-    const porteriaX =
-        jugador.equipo === "local"
-            ? W
-            : 0;
+    const porteriaX=
+        dir===1?FIELD_W:0;
 
+    const distanciaPorteria=
+        Math.abs(porteriaX-j.x);
 
-    const distanciaPorteria =
-        Math.abs(
-            porteriaX - jugador.x
+    const rivales=
+        rivalesDe(j);
+
+    const compañeros=
+        equipoDe(j).filter(
+            p=>p!==j&&p.posicion!=="POR"
         );
 
 
-    const rivales =
-        rivalDe(jugador);
+    /* PRESIÓN */
+
+    let presion=
+        rivales.filter(
+            r=>distancia(j,r)<150
+        ).length;
 
 
-    const rivalesCerca =
-        rivales.filter(r =>
-            distancia(jugador, r) < 230
-        );
+    /* TIRO */
 
+    if(
+        distanciaPorteria<350 &&
+        j.tiro>55 &&
+        presion<2 &&
+        random()<0.035
+    ){
 
-    /*
-       TIRO
-    */
-
-    if (
-        distanciaPorteria < 350 &&
-        Math.random() < 0.035
-    ) {
-
-        chutar(jugador);
+        chutar(j);
 
         return;
 
     }
 
 
-    /*
-       SI ESTÁ MUY PRESIONADO,
-       BUSCAR PASE
-    */
+    /* BUSCAR TRIANGULACIÓN */
 
-    if (
-        rivalesCerca.length >= 2
-    ) {
+    let mejor=null;
+    let mejorScore=-Infinity;
 
-        const compañero =
-            buscarMejorPase(jugador, true);
+    compañeros.forEach(c=>{
 
-        if (compañero) {
+        const d=distancia(j,c);
 
-            pasar(
-                jugador,
-                compañero
-            );
+        if(d<90||d>600)return;
 
-            return;
+        const adelante=
+            (c.x-j.x)*dir;
 
-        }
+        let espacio=0;
 
-    }
+        rivales.forEach(r=>{
 
+            if(distancia(c,r)>130)
+                espacio++;
 
-    /*
-       TRIANGULACIÓN
-    */
+        });
 
-    const triangulo =
-        buscarTriangulacion(jugador);
+        let score=
+            adelante*.7+
+            espacio*70-
+            Math.abs(c.y-j.y)*.15;
 
+        /* ESTILO DEL JUGADOR */
 
-    if (
-        triangulo &&
-        Math.random() < 0.045
-    ) {
+        if(
+            j.especialidad==="Pase filtrado" ||
+            j.especialidad==="Organizador"
+        ){
 
-        pasar(
-            jugador,
-            triangulo
-        );
-
-        return;
-
-    }
-
-
-    /*
-       PASE NORMAL
-    */
-
-    if (
-        jugador.decision > 70 &&
-        Math.random() < 0.04
-    ) {
-
-        const compañero =
-            buscarMejorPase(jugador, false);
-
-        if (compañero) {
-
-            pasar(
-                jugador,
-                compañero
-            );
-
-            return;
+            score+=50;
 
         }
 
-    }
+        if(
+            j.estilo==="Posesión"
+        ){
 
-
-    /*
-       CONDUCIR
-    */
-
-    conducirBalon(jugador);
-
-}
-
-
-/* =========================================================
-   BUSCAR MEJOR PASE
-========================================================= */
-
-function buscarMejorPase(
-    jugador,
-    emergencia
-) {
-
-    const dir =
-        direccionAtaque(jugador);
-
-
-    const compañeros =
-        equipoDe(jugador)
-            .filter(j =>
-                j !== jugador &&
-                j.rol !== "POR"
-            );
-
-
-    let mejor = null;
-
-    let mejorPuntuacion = -Infinity;
-
-
-    compañeros.forEach(comp => {
-
-        const d =
-            distancia(
-                jugador,
-                comp
-            );
-
-
-        if (d < 100 || d > 650) {
-            return;
-        }
-
-
-        const avance =
-            (comp.x - jugador.x) * dir;
-
-
-        const espacio =
-            espacioAlrededor(comp);
-
-
-        const linea =
-            lineaDePaseLibre(
-                jugador,
-                comp
-            );
-
-
-        let puntuacion = 0;
-
-
-        puntuacion += avance * 0.45;
-
-        puntuacion += espacio * 0.7;
-
-        puntuacion += linea * 300;
-
-        puntuacion -= d * 0.12;
-
-
-        if (emergencia) {
-
-            puntuacion +=
-                espacio * 300;
+            score+=30;
 
         }
 
+        if(score>mejorScore){
 
-        /*
-           Preferir jugadores que
-           estén formando triángulos.
-        */
-
-        if (
-            estaEnTriangulo(
-                jugador,
-                comp
-            )
-        ) {
-
-            puntuacion += 160;
-
-        }
-
-
-        puntuacion +=
-            Math.random() * 50;
-
-
-        if (
-            puntuacion >
-            mejorPuntuacion
-        ) {
-
-            mejorPuntuacion =
-                puntuacion;
-
-            mejor = comp;
+            mejorScore=score;
+            mejor=c;
 
         }
 
     });
 
+
+    /* PASAR */
+
+    if(
+        mejor &&
+        (
+            presion>=1 ||
+            j.decision>70 ||
+            random()<0.018
+        )
+    ){
+
+        pasar(j,mejor);
+
+        j.decision=rango(25,60);
+
+        return;
+
+    }
+
+
+    /* CONDUCIR */
+
+    j.x+=dir*(2.2+j.velocidad*.035);
+
+    j.y+=
+        Math.sin(
+            Date.now()/500+j.id.length
+        )*0.7;
+
+    j.x=limitar(j.x,30,FIELD_W-30);
+    j.y=limitar(j.y,30,FIELD_H-30);
+
+}
+
+
+/* =========================================================
+   TRIANGULACIÓN / APOYOS
+========================================================= */
+
+function buscarApoyo(j){
+
+    const poseedor=balon.poseedor;
+
+    if(!poseedor)return;
+
+    const dir=direccion(j);
+
+    let dx=j.baseX-poseedor.x;
+    let dy=j.baseY-poseedor.y;
+
+    /* El jugador busca una posición
+       que genere una línea de pase */
+
+    let targetX=
+        poseedor.x+
+        dx*.35+
+        dir*70;
+
+    let targetY=
+        poseedor.y+
+        dy*.35;
+
+    /* Abrir el campo */
+
+    if(
+        j.posicion==="EXT"
+    ){
+
+        targetY=
+            j.baseY<600
+                ?130
+                :1070;
+
+    }
+
+    /* MC ofrece apoyo detrás */
+
+    if(
+        j.posicion==="MC"||
+        j.posicion==="PIV"
+    ){
+
+        targetX=
+            poseedor.x-dir*100;
+
+    }
+
+    /* MPO se mete entre líneas */
+
+    if(j.posicion==="MPO"){
+
+        targetX=
+            poseedor.x+dir*140;
+
+    }
+
+    j.objetivoX=targetX;
+    j.objetivoY=targetY;
+
+    mover(j,.65);
+
+}
+
+
+/* =========================================================
+   DESMARQUES
+========================================================= */
+
+function desmarcar(j){
+
+    const dir=direccion(j);
+
+    let x=j.baseX;
+    let y=j.baseY;
+
+    if(
+        j.posicion==="DEL"
+    ){
+
+        x+=dir*130;
+
+        y=
+            600+
+            Math.sin(Date.now()/900)*180;
+
+    }
+
+    if(
+        j.posicion==="EXT"
+    ){
+
+        x+=dir*180;
+
+        y=
+            j.baseY<600
+                ?130
+                :1070;
+
+    }
+
+    if(
+        j.posicion==="MPO"
+    ){
+
+        x+=dir*100;
+
+        y=600+(j.baseY-600)*.5;
+
+    }
+
+    j.objetivoX=x;
+    j.objetivoY=y;
+
+    mover(j,.55);
+
+}
+
+
+/* =========================================================
+   DEFENSA
+========================================================= */
+
+function defender(j){
+
+    const dir=direccion(j);
+
+    let atacante=null;
+
+    let menor=Infinity;
+
+    rivalesDe(j).forEach(r=>{
+
+        if(
+            r.posicion==="DEL"||
+            r.posicion==="EXT"||
+            r.posicion==="MPO"
+        ){
+
+            const d=distancia(j,r);
+
+            if(d<menor){
+
+                menor=d;
+                atacante=r;
+
+            }
+
+        }
+
+    });
+
+
+    if(
+        atacante &&
+        menor<420
+    ){
+
+        j.objetivoX=
+            atacante.x-dir*25;
+
+        j.objetivoY=
+            atacante.y;
+
+    }else{
+
+        j.objetivoX=
+            j.baseX+
+            (balon.x-FIELD_W/2)*.08;
+
+        j.objetivoY=
+            j.baseY+
+            (balon.y-j.baseY)*.08;
+
+    }
+
+    mover(j,.7);
+
+}
+
+
+/* =========================================================
+   MOVIMIENTO
+========================================================= */
+
+function mover(j,factor){
+
+    const dx=j.objetivoX-j.x;
+    const dy=j.objetivoY-j.y;
+
+    const d=Math.hypot(dx,dy);
+
+    if(d<2)return;
+
+    let velocidad=
+        1.5+
+        j.velocidad*.035;
+
+    velocidad*=factor;
+
+    j.x+=dx/d*velocidad;
+    j.y+=dy/d*velocidad;
+
+    j.x=limitar(j.x,25,FIELD_W-25);
+    j.y=limitar(j.y,25,FIELD_H-25);
+
+}
+
+
+/* =========================================================
+   PASAR
+========================================================= */
+
+function pasar(origen,destino){
+
+    if(!destino)return;
+
+    origen.tieneBalon=false;
+
+    balon.poseedor=null;
+
+    balon.cooldown=20;
+
+    balon.x=origen.x;
+    balon.y=origen.y;
+
+    let dx=destino.x-origen.x;
+    let dy=destino.y-origen.y;
+
+    let d=Math.hypot(dx,dy);
+
+    let potencia=
+        7+
+        origen.pase*.07;
+
+    balon.vx=dx/d*potencia;
+    balon.vy=dy/d*potencia;
+
+}
+
+
+/* =========================================================
+   CHUTAR
+========================================================= */
+
+function chutar(j){
+
+    const dir=direccion(j);
+
+    const porteriaX=
+        dir===1?FIELD_W:0;
+
+    const objetivoY=
+        600+
+        (random()-.5)*320;
+
+    const dx=
+        porteriaX-j.x;
+
+    const dy=
+        objetivoY-j.y;
+
+    const d=Math.hypot(dx,dy);
+
+    balon.poseedor=null;
+
+    j.tieneBalon=false;
+
+    balon.cooldown=30;
+
+    balon.x=j.x;
+    balon.y=j.y;
+
+    balon.vx=dx/d*16;
+    balon.vy=dy/d*16;
+
+}
+
+
+/* =========================================================
+   HUMANO
+========================================================= */
+
+function actualizarHumano(){
+
+    const j=jugadorHumano;
+
+    if(!j)return;
+
+    let dx=0;
+    let dy=0;
+
+    if(keys["w"]||keys["arrowup"])dy--;
+    if(keys["s"]||keys["arrowdown"])dy++;
+    if(keys["a"]||keys["arrowleft"])dx--;
+    if(keys["d"]||keys["arrowright"])dx++;
+
+    if(dx||dy){
+
+        let d=Math.hypot(dx,dy);
+
+        j.x+=dx/d*(3+j.velocidad*.045);
+        j.y+=dy/d*(3+j.velocidad*.045);
+
+    }
+
+    j.x=limitar(j.x,25,FIELD_W-25);
+    j.y=limitar(j.y,25,FIELD_H-25);
+
+
+    if(
+        keys[" "] &&
+        balon.poseedor===j
+    ){
+
+        let compañero=
+            encontrarCompañero(j);
+
+        if(compañero){
+
+            pasar(j,compañero);
+
+            keys[" "]=false;
+
+        }
+
+    }
+
+
+    if(
+        !balon.poseedor &&
+        balon.cooldown<=0 &&
+        distancia(j,balon)<35
+    ){
+
+        balon.poseedor=j;
+
+        j.tieneBalon=true;
+
+    }
+
+}
+
+
+/* =========================================================
+   COMPAÑERO HUMANO
+========================================================= */
+
+function encontrarCompañero(j){
+
+    let mejor=null;
+    let score=-Infinity;
+
+    const dir=direccion(j);
+
+    equipoLocal.forEach(c=>{
+
+        if(c===j||c.posicion==="POR")return;
+
+        let d=distancia(j,c);
+
+        if(d<70||d>650)return;
+
+        let adelante=
+            (c.x-j.x)*dir;
+
+        let rivalesCerca=
+            equipoRival.filter(
+                r=>distancia(c,r)<130
+            ).length;
+
+        let puntuacion=
+            adelante-
+            rivalesCerca*90-
+            Math.abs(c.y-j.y)*.15;
+
+        if(puntuacion>score){
+
+            score=puntuacion;
+            mejor=c;
+
+        }
+
+    });
 
     return mejor;
 
@@ -906,55 +1784,62 @@ function buscarMejorPase(
 
 
 /* =========================================================
-   TRIANGULACIONES
+   BALÓN
 ========================================================= */
 
-function buscarTriangulacion(jugador) {
+function actualizarBalon(){
 
-    const compañeros =
-        equipoDe(jugador)
-            .filter(j =>
-                j !== jugador &&
-                j.rol !== "POR"
-            );
+    if(balon.cooldown>0)
+        balon.cooldown--;
 
 
-    for (const compañero of compañeros) {
+    if(balon.poseedor){
 
-        if (
-            distancia(
-                jugador,
-                compañero
-            ) > 500
-        ) {
-            continue;
-        }
+        balon.x=
+            balon.poseedor.x+
+            direccion(balon.poseedor)*18;
 
+        balon.y=
+            balon.poseedor.y;
 
-        const tercerJugador =
-            compañeros.find(otro =>
-                otro !== compañero &&
-                distancia(
-                    compañero,
-                    otro
-                ) < 550 &&
-                distancia(
-                    jugador,
-                    otro
-                ) < 600
-            );
+    }else{
+
+        balon.x+=balon.vx;
+        balon.y+=balon.vy;
+
+        balon.vx*=.985;
+        balon.vy*=.985;
 
 
-        if (tercerJugador) {
+        /* RECEPCIÓN */
 
-            if (
-                lineaDePaseLibre(
-                    jugador,
-                    compañero
-                ) > 0.5
-            ) {
+        if(balon.cooldown<=0){
 
-                return compañero;
+            let candidato=null;
+            let menor=Infinity;
+
+            [...equipoLocal,...equipoRival]
+            .forEach(j=>{
+
+                let d=distancia(j,balon);
+
+                if(
+                    d<40 &&
+                    d<menor
+                ){
+
+                    menor=d;
+                    candidato=j;
+
+                }
+
+            });
+
+            if(candidato){
+
+                balon.poseedor=candidato;
+
+                candidato.tieneBalon=true;
 
             }
 
@@ -963,467 +1848,1316 @@ function buscarTriangulacion(jugador) {
     }
 
 
-    return null;
+    /* ROBOS */
+
+    if(balon.poseedor){
+
+        let poseedor=balon.poseedor;
+
+        let rivales=rivalesDe(poseedor);
+
+        rivales.forEach(r=>{
+
+            let d=distancia(r,poseedor);
+
+            if(d<28){
+
+                let defensa=
+                    r.defensa+
+                    r.fisico*.3;
+
+                let control=
+                    poseedor.control+
+                    poseedor.regate*.4;
+
+                let prob=
+                    .015+
+                    (defensa-control)/1000;
+
+                if(random()<prob){
+
+                    poseedor.tieneBalon=false;
+
+                    balon.poseedor=r;
+
+                    r.tieneBalon=true;
+
+                    evento(
+                        "🦶 "+r.nombre+
+                        " robó el balón a "+
+                        poseedor.nombre
+                    );
+
+                }
+
+            }
+
+        });
+
+    }
+
+
+    /* BORDES */
+
+    if(balon.y<15){
+
+        balon.y=15;
+        balon.vy*=-.8;
+
+    }
+
+    if(balon.y>FIELD_H-15){
+
+        balon.y=FIELD_H-15;
+        balon.vy*=-.8;
+
+    }
+
+
+    /* GOLES */
+
+    if(
+        balon.x<0 &&
+        balon.y>430 &&
+        balon.y<770
+    ){
+
+        golesRival++;
+
+        reiniciarTrasGol();
+
+    }
+
+    if(
+        balon.x>FIELD_W &&
+        balon.y>430 &&
+        balon.y<770
+    ){
+
+        golesLocal++;
+
+        reiniciarTrasGol();
+
+    }
 
 }
 
 
 /* =========================================================
-   DETECTAR TRIÁNGULO
+   GOL
 ========================================================= */
 
-function estaEnTriangulo(a, b) {
+function reiniciarTrasGol(){
 
-    const compañeros =
-        equipoDe(a)
-            .filter(j =>
-                j !== a &&
-                j !== b
-            );
+    balon.poseedor=null;
 
+    balon.x=FIELD_W/2;
+    balon.y=FIELD_H/2;
 
-    return compañeros.some(c => {
+    balon.vx=0;
+    balon.vy=0;
 
-        return (
-            distancia(a, c) < 600 &&
-            distancia(b, c) < 600
-        );
-
+    equipoLocal.forEach(j=>{
+        j.x=j.baseX;
+        j.y=j.baseY;
+        j.tieneBalon=false;
     });
+
+    equipoRival.forEach(j=>{
+        j.x=j.baseX;
+        j.y=j.baseY;
+        j.tieneBalon=false;
+    });
+
+    balon.cooldown=50;
+
+    setTimeout(()=>{
+
+        if(!partidoActivo)return;
+
+        const saque=
+            golesLocal<=golesRival
+                ?equipoLocal[9]
+                :equipoRival[9];
+
+        balon.poseedor=saque;
+
+        saque.tieneBalon=true;
+
+    },500);
 
 }
 
 
 /* =========================================================
-   ESPACIO ALREDEDOR
+   COLISIONES
 ========================================================= */
 
-function espacioAlrededor(jugador) {
+function colisiones(){
 
-    const rivales =
-        rivalDe(jugador);
+    const todos=[
+        ...equipoLocal,
+        ...equipoRival
+    ];
+
+    for(let i=0;i<todos.length;i++){
+
+        for(let k=i+1;k<todos.length;k++){
+
+            let a=todos[i];
+            let b=todos[k];
+
+            let dx=b.x-a.x;
+            let dy=b.y-a.y;
+
+            let d=Math.hypot(dx,dy);
+
+            if(d<30&&d>0){
+
+                let fuerza=(30-d)*.3;
+
+                a.x-=dx/d*fuerza;
+                a.y-=dy/d*fuerza;
+
+                b.x+=dx/d*fuerza;
+                b.y+=dy/d*fuerza;
+
+            }
+
+        }
+
+    }
+
+}
 
 
-    let minimo = 9999;
+/* =========================================================
+   CÁMARA
+========================================================= */
+
+function actualizarCamara(){
+
+    if(!jugadorHumano)return;
+
+    camera.x+=
+        (jugadorHumano.x-camera.x)*.08;
+
+    camera.y+=
+        (jugadorHumano.y-camera.y)*.08;
+
+    let pantallaW=innerWidth;
+    let pantallaH=innerHeight;
+
+    let zoom=Math.min(
+        pantallaW/900,
+        pantallaH/600
+    );
+
+    zoom=limitar(zoom,.65,1.35);
+
+    camera.zoom=zoom;
+
+}
 
 
-    rivales.forEach(r => {
+/* =========================================================
+   DIBUJAR CAMPO
+========================================================= */
 
-        const d =
-            distancia(
-                jugador,
-                r
-            );
+function dibujarCampo(){
 
+    ctx.fillStyle="#19763a";
 
-        minimo =
-            Math.min(
-                minimo,
-                d
-            );
-
-    });
-
-
-    return limitar(
-        minimo / 250,
+    ctx.fillRect(
         0,
-        2
+        0,
+        FIELD_W,
+        FIELD_H
     );
+
+
+    /* FRANJAS */
+
+    for(
+        let x=0;
+        x<FIELD_W;
+        x+=120
+    ){
+
+        ctx.fillStyle=
+            (x/120)%2===0
+                ?"rgba(255,255,255,.025)"
+                :"rgba(0,0,0,.025)";
+
+        ctx.fillRect(
+            x,
+            0,
+            120,
+            FIELD_H
+        );
+
+    }
+
+
+    ctx.strokeStyle="white";
+    ctx.lineWidth=4;
+
+    /* EXTERIOR */
+
+    ctx.strokeRect(
+        25,
+        25,
+        FIELD_W-50,
+        FIELD_H-50
+    );
+
+
+    /* CENTRO */
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        FIELD_W/2,
+        25
+    );
+
+    ctx.lineTo(
+        FIELD_W/2,
+        FIELD_H-25
+    );
+
+    ctx.stroke();
+
+
+    ctx.beginPath();
+
+    ctx.arc(
+        FIELD_W/2,
+        FIELD_H/2,
+        140,
+        0,
+        Math.PI*2
+    );
+
+    ctx.stroke();
+
+
+    /* ÁREAS */
+
+    ctx.strokeRect(
+        25,
+        390,
+        280,
+        420
+    );
+
+    ctx.strokeRect(
+        FIELD_W-305,
+        390,
+        280,
+        420
+    );
+
+
+    /* PEQUEÑAS */
+
+    ctx.strokeRect(
+        25,
+        495,
+        110,
+        210
+    );
+
+    ctx.strokeRect(
+        FIELD_W-135,
+        495,
+        110,
+        210
+    );
+
+
+    /* PORTERÍAS */
+
+    ctx.strokeRect(
+        0,
+        495,
+        25,
+        210
+    );
+
+    ctx.strokeRect(
+        FIELD_W-25,
+        495,
+        25,
+        210
+    );
+
+
+    /* PUNTOS */
+
+    ctx.fillStyle="white";
+
+    [
+        [FIELD_W/2,FIELD_H/2],
+        [260,600],
+        [FIELD_W-260,600]
+    ].forEach(p=>{
+
+        ctx.beginPath();
+
+        ctx.arc(
+            p[0],
+            p[1],
+            6,
+            0,
+            Math.PI*2
+        );
+
+        ctx.fill();
+
+    });
 
 }
 
 
 /* =========================================================
-   LÍNEA DE PASE
+   DIBUJAR JUGADORES
 ========================================================= */
 
-function lineaDePaseLibre(
-    origen,
-    destino
-) {
+function dibujarJugadores(){
 
-    const dx =
-        destino.x - origen.x;
+    [
+        ...equipoLocal,
+        ...equipoRival
+    ].forEach(j=>{
 
-    const dy =
-        destino.y - origen.y;
+        /* SOMBRA */
 
+        ctx.fillStyle="rgba(0,0,0,.3)";
 
-    const distanciaTotal =
-        Math.hypot(dx, dy);
+        ctx.beginPath();
 
+        ctx.ellipse(
+            j.x,
+            j.y+16,
+            18,
+            7,
+            0,
+            0,
+            Math.PI*2
+        );
 
-    if (distanciaTotal === 0) {
-        return 0;
-    }
-
-
-    let bloqueadores = 0;
-
-
-    rivalDe(origen).forEach(rival => {
-
-        const px =
-            rival.x - origen.x;
-
-        const py =
-            rival.y - origen.y;
+        ctx.fill();
 
 
-        const proyeccion =
-            (
-                px * dx +
-                py * dy
-            ) /
-            (
-                distanciaTotal *
-                distanciaTotal
+        /* CUERPO */
+
+        ctx.beginPath();
+
+        ctx.arc(
+            j.x,
+            j.y,
+            20,
+            0,
+            Math.PI*2
+        );
+
+        ctx.fillStyle=
+            j.equipo===mundo.club.nombre
+                ?"rgba(210,35,35,1)"
+                :"rgba(35,105,235,1)";
+
+        ctx.fill();
+
+
+        /* BORDE */
+
+        ctx.strokeStyle=
+            j===jugadorHumano
+                ?"yellow"
+                :"white";
+
+        ctx.lineWidth=
+            j===jugadorHumano
+                ?5
+                :2;
+
+        ctx.stroke();
+
+
+        /* ROL */
+
+        ctx.fillStyle="white";
+
+        ctx.font="bold 13px Arial";
+
+        ctx.textAlign="center";
+
+        ctx.fillText(
+            j.posicion,
+            j.x,
+            j.y-28
+        );
+
+
+        /* INDICADOR */
+
+        if(j===jugadorHumano){
+
+            ctx.fillStyle="#ffff00";
+
+            ctx.beginPath();
+
+            ctx.moveTo(
+                j.x,
+                j.y-45
             );
 
+            ctx.lineTo(
+                j.x-9,
+                j.y-60
+            );
 
-        if (
-            proyeccion > 0.05 &&
-            proyeccion < 0.95
-        ) {
+            ctx.lineTo(
+                j.x+9,
+                j.y-60
+            );
 
-            const cercaX =
-                origen.x +
-                dx * proyeccion;
+            ctx.closePath();
 
-            const cercaY =
-                origen.y +
-                dy * proyeccion;
-
-
-            const distanciaLinea =
-                Math.hypot(
-                    rival.x - cercaX,
-                    rival.y - cercaY
-                );
-
-
-            if (
-                distanciaLinea < 55
-            ) {
-
-                bloqueadores++;
-
-            }
+            ctx.fill();
 
         }
 
     });
 
+}
 
-    return bloquearoresToScore(
-        bloqueadores
+
+/* =========================================================
+   DIBUJAR BALÓN
+========================================================= */
+
+function dibujarBalon(){
+
+    ctx.beginPath();
+
+    ctx.arc(
+        balon.x,
+        balon.y,
+        10,
+        0,
+        Math.PI*2
     );
 
-}
+    ctx.fillStyle="white";
 
+    ctx.fill();
 
-function bloquearoresToScore(n) {
+    ctx.strokeStyle="black";
 
-    if (n === 0) {
-        return 1;
-    }
+    ctx.lineWidth=2;
 
-    if (n === 1) {
-        return 0.45;
-    }
-
-    return 0.1;
+    ctx.stroke();
 
 }
 
 
 /* =========================================================
-   CONDUCIR
+   RENDER
 ========================================================= */
 
-function conducirBalon(jugador) {
+function render(){
 
-    const dir =
-        direccionAtaque(jugador);
-
-
-    let objetivoY =
-        CENTRO_Y;
-
-
-    /*
-       Evitar ir siempre
-       directamente a portería.
-    */
-
-    const rivales =
-        rivalDe(jugador);
-
-
-    const rivalCercano =
-        rivales
-            .sort(
-                (a, b) =>
-                    distancia(jugador, a) -
-                    distancia(jugador, b)
-            )[0];
-
-
-    if (
-        rivalCercano &&
-        distancia(
-            jugador,
-            rivalCercano
-        ) < 220
-    ) {
-
-        /*
-           Regate lateral.
-        */
-
-        objetivoY =
-            jugador.y +
-            (
-                jugador.y <
-                rivalCercano.y
-                    ? -180
-                    : 180
-            );
-
-    } else {
-
-        /*
-           Conducción diagonal.
-        */
-
-        objetivoY =
-            CENTRO_Y +
-            Math.sin(
-                Date.now() / 900 +
-                jugador.x / 300
-            ) * 220;
-
-    }
-
-
-    const dx =
-        dir * jugador.velocidad;
-
-
-    const dy =
-        limitar(
-            objetivoY - jugador.y,
-            -3,
-            3
-        );
-
-
-    jugador.x += dx;
-
-    jugador.y += dy;
-
-
-    jugador.x =
-        limitar(
-            jugador.x,
-            60,
-            W - 60
-        );
-
-
-    jugador.y =
-        limitar(
-            jugador.y,
-            60,
-            H - 60
-        );
-
-}
-
-
-/* =========================================================
-   ATAQUE SIN BALÓN
-========================================================= */
-
-function moverseEnAtaque(jugador) {
-
-    const dir =
-        direccionAtaque(jugador);
-
-
-    const poseedor =
-        balon.poseedor;
-
-
-    /*
-       Crear apoyos.
-    */
-
-    const distanciaBalon =
-        distancia(
-            jugador,
-            poseedor
-        );
-
-
-    /*
-       Jugadores cercanos
-       al poseedor se ofrecen.
-    */
-
-    if (
-        distanciaBalon > 220 &&
-        distanciaBalon < 600
-    ) {
-
-        jugador.objetivoX =
-            poseedor.x +
-            dir * 100;
-
-        jugador.objetivoY =
-            poseedor.y +
-            (
-                jugador.baseY -
-                poseedor.y
-            ) * 0.45;
-
-    } else {
-
-        /*
-           Mantener amplitud
-           y estructura.
-        */
-
-        jugador.objetivoX =
-            jugador.baseX +
-            (
-                poseedor.x -
-                CENTRO_X
-            ) * 0.28;
-
-        jugador.objetivoY =
-            jugador.baseY +
-            (
-                poseedor.y -
-                jugador.baseY
-            ) * 0.35;
-
-    }
-
-
-    /*
-       Desmarque.
-    */
-
-    if (
-        Math.random() <
-        0.008
-    ) {
-
-        jugador.objetivoX +=
-            dir * 250;
-
-    }
-
-
-    moverHaciaObjetivo(
-        jugador,
-        0.08
+    ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
     );
 
+
+    actualizarCamara();
+
+
+    let vw=innerWidth;
+    let vh=innerHeight;
+
+    canvas.width=vw;
+    canvas.height=vh;
+
+
+    ctx.save();
+
+
+    ctx.translate(
+        vw/2,
+        vh/2
+    );
+
+
+    ctx.scale(
+        camera.zoom,
+        camera.zoom
+    );
+
+
+    ctx.translate(
+        -camera.x,
+        -camera.y
+    );
+
+
+    dibujarCampo();
+    dibujarJugadores();
+    dibujarBalon();
+
+
+    ctx.restore();
+
 }
 
 
 /* =========================================================
-   DEFENSA EN EQUIPO
+   ACTUALIZAR JUEGO
 ========================================================= */
 
-function defenderEnEquipo(jugador) {
+function actualizar(){
 
-    const rival =
-        balon.poseedor;
+    if(!partidoActivo)return;
+
+    actualizarHumano();
+
+    [
+        ...equipoLocal,
+        ...equipoRival
+    ].forEach(actualizarIA);
+
+    colisiones();
+
+    actualizarBalon();
+
+}
 
 
-    const dir =
-        direccionAtaque(jugador);
+/* =========================================================
+   BUCLE
+========================================================= */
+
+function loop(){
+
+    actualizar();
+    render();
+
+    requestAnimationFrame(loop);
+
+}
+
+loop();
 
 
-    const distanciaBalon =
-        distancia(
-            jugador,
-            rival
+/* =========================================================
+   CARRERA
+========================================================= */
+
+function avanzarDia(){
+
+    mundo.dias++;
+
+    mundo.dia++;
+
+    if(mundo.dia>28){
+
+        mundo.dia=1;
+        mundo.mes++;
+
+    }
+
+    if(mundo.mes>12){
+
+        mundo.mes=1;
+        mundo.año++;
+
+        jugadorHumano.edad++;
+
+    }
+
+
+    /* RECUPERACIÓN */
+
+    jugadorHumano.fatiga=
+        Math.max(
+            0,
+            jugadorHumano.fatiga-10
         );
 
 
-    /*
-       Jugadores cercanos presionan.
-    */
+    jugadorHumano.forma=
+        limitar(
+            jugadorHumano.forma+
+            rango(-3,3),
+            1,
+            100
+        );
 
-    if (
-        distanciaBalon < 260
-    ) {
 
-        jugador.presionando = true;
+    /* EVENTO */
 
-        jugador.objetivoX =
-            rival.x -
-            dir * 35;
+    if(random()<.18){
 
-        jugador.objetivoY =
-            rival.y;
-
-    } else {
-
-        jugador.presionando = false;
-
-        /*
-           Mantener bloque defensivo.
-        */
-
-        jugador.objetivoX =
-            jugador.baseX +
-            (
-                rival.x -
-                CENTRO_X
-            ) * 0.18;
-
-        jugador.objetivoY =
-            jugador.baseY +
-            (
-                rival.y -
-                jugador.baseY
-            ) * 0.22;
+        generarEvento();
 
     }
 
 
-    /*
-       Cobertura:
-       no todos van al balón.
-    */
+    /* ENTRENADOR */
 
-    const presionadores =
-        equipoDe(jugador)
-            .filter(j =>
-                j.presionando
+    evaluarConfianza();
+
+    actualizarHUD();
+
+}
+
+
+/* =========================================================
+   ENTRENAMIENTO
+========================================================= */
+
+function entrenar(tipo){
+
+    if(!mundo)return;
+
+    if(tipo==="descanso"){
+
+        jugadorHumano.fatiga=
+            Math.max(
+                0,
+                jugadorHumano.fatiga-30
             );
 
+        jugadorHumano.forma=
+            Math.min(
+                100,
+                jugadorHumano.forma+8
+            );
 
-    if (
-        presionadores.length >= 2 &&
-        distanciaBalon > 130
-    ) {
+        mundo.dias++;
 
-        jugador.presionando = false;
+        evento("😴 Has descansado.");
 
-        jugador.objetivoX =
-            jugador.baseX;
+        avanzarDia();
 
-        jugador.objetivoY =
-            jugador.baseY;
+        actualizarPerfil();
+
+        return;
 
     }
 
 
-    moverHaciaObjetivo
+    if(jugadorHumano.fatiga>85){
+
+        evento(
+            "⚠️ Estás demasiado fatigado para entrenar."
+        );
+
+        return;
+
+    }
+
+
+    let aumento=.15;
+
+    if(tipo==="pase")
+        jugadorHumano.pase+=aumento;
+
+    if(tipo==="tiro")
+        jugadorHumano.tiro+=aumento;
+
+    if(tipo==="regate")
+        jugadorHumano.regate+=aumento;
+
+    if(tipo==="fisico")
+        jugadorHumano.fisico+=aumento;
+
+    if(tipo==="tactica")
+        jugadorHumano.control+=aumento;
+
+
+    jugadorHumano.fatiga+=rango(8,18);
+
+    jugadorHumano.forma=
+        Math.min(
+            100,
+            jugadorHumano.forma+2
+        );
+
+
+    mundo.dias++;
+
+    evento(
+        "🏃 Entrenamiento completado: "+tipo
+    );
+
+    avanzarDia();
+
+    actualizarPerfil();
+
+}
+
+
+/* =========================================================
+   CONFIANZA
+========================================================= */
+
+function evaluarConfianza(){
+
+    let entrenador=mundo.entrenador;
+
+    let cambio=0;
+
+    if(
+        jugadorHumano.forma>80
+    )
+        cambio+=1;
+
+    if(
+        jugadorHumano.forma<45
+    )
+        cambio-=1;
+
+    if(
+        jugadorHumano.fatiga>90
+    )
+        cambio-=2;
+
+    if(
+        entrenador.cantera>70
+    )
+        cambio+=.5;
+
+    if(
+        jugadorHumano.personalidad==="Trabajador"
+    )
+        cambio+=.5;
+
+    jugadorHumano.confianza=
+        limitar(
+            jugadorHumano.confianza+cambio,
+            0,
+            100
+        );
+
+}
+
+
+/* =========================================================
+   EVENTOS
+========================================================= */
+
+function generarEvento(){
+
+    const eventosPosibles=[
+
+        ()=>{
+            jugadorHumano.confianza+=3;
+
+            return "👨‍🏫 El entrenador destacó tu actitud.";
+        },
+
+        ()=>{
+            jugadorHumano.forma-=4;
+
+            return "😓 Tuviste un entrenamiento flojo.";
+        },
+
+        ()=>{
+            jugadorHumano.fatiga+=15;
+
+            return "💢 Entrenamiento especialmente intenso.";
+        },
+
+        ()=>{
+            jugadorHumano.pase+=.4;
+
+            return "🎯 Has mejorado ligeramente tu pase.";
+        },
+
+        ()=>{
+            jugadorHumano.regate+=.4;
+
+            return "🕺 Has mejorado tu regate.";
+        },
+
+        ()=>{
+
+            if(jugadorHumano.edad<18){
+
+                jugadorHumano.confianza+=5;
+
+                return "⭐ El primer equipo ha empezado a observarte.";
+
+            }
+
+            return "👀 Un club está siguiendo tus actuaciones.";
+
+        },
+
+        ()=>{
+
+            jugadorHumano.forma+=5;
+
+            return "🔥 Estás atravesando un buen momento.";
+
+        }
+
+    ];
+
+    let resultado=
+        elegir(eventosPosibles)();
+
+    evento(resultado);
+
+}
+
+
+/* =========================================================
+   EVENTOS / HISTORIA
+========================================================= */
+
+function evento(texto){
+
+    eventos.unshift({
+
+        dia:mundo?
+            `${mundo.dia}/${mundo.mes}/${mundo.año}`
+            :"Inicio",
+
+        texto
+
+    });
+
+    eventos=eventos.slice(0,40);
+
+    mostrarNotificacion(texto);
+
+    actualizarEventos();
+
+}
+
+
+/* =========================================================
+   NOTIFICACIÓN
+========================================================= */
+
+let notificationTimer=null;
+
+function mostrarNotificacion(texto){
+
+    const n=
+        document.getElementById("notification");
+
+    n.textContent=texto;
+
+    n.style.display="block";
+
+    clearTimeout(notificationTimer);
+
+    notificationTimer=setTimeout(()=>{
+
+        n.style.display="none";
+
+    },3500);
+
+}
+
+
+/* =========================================================
+   HUD
+========================================================= */
+
+function actualizarHUD(){
+
+    if(!mundo)return;
+
+    document.getElementById("playerName")
+        .textContent=jugadorHumano.nombre;
+
+    document.getElementById("clubName")
+        .textContent=mundo.club.nombre;
+
+    document.getElementById("playerAge")
+        .textContent=jugadorHumano.edad;
+
+    document.getElementById("playerRating")
+        .textContent=calcularRating(jugadorHumano);
+
+    document.getElementById("playerPotential")
+        .textContent=
+            jugadorHumano.edad<18
+                ?"???"
+                :jugadorHumano.potencial;
+
+    document.getElementById("confidence")
+        .textContent=
+            Math.round(jugadorHumano.confianza)+"%";
+
+    document.getElementById("form")
+        .textContent=
+            Math.round(jugadorHumano.forma);
+
+    document.getElementById("fatigue")
+        .textContent=
+            Math.round(jugadorHumano.fatiga);
+
+    document.getElementById("date")
+        .textContent=
+            `${mundo.dia}/${mundo.mes}/${mundo.año}`;
+
+    document.getElementById("score")
+        .textContent=
+            `${golesLocal} - ${golesRival}`;
+
+}
+
+
+/* =========================================================
+   PANEL CARRERA
+========================================================= */
+
+function abrirCarrera(){
+
+    actualizarPerfil();
+    actualizarEquipo();
+    actualizarEventos();
+
+    document.getElementById("careerPanel")
+        .style.display="flex";
+
+}
+
+function cerrarCarrera(){
+
+    document.getElementById("careerPanel")
+        .style.display="none";
+
+}
+
+
+function mostrarPagina(id,boton){
+
+    document
+        .querySelectorAll(".page")
+        .forEach(p=>p.classList.remove("active"));
+
+    document
+        .querySelectorAll(".tab")
+        .forEach(b=>b.classList.remove("active"));
+
+    document
+        .getElementById(id)
+        .classList.add("active");
+
+    boton.classList.add("active");
+
+}
+
+
+/* =========================================================
+   PERFIL
+========================================================= */
+
+function actualizarPerfil(){
+
+    if(!jugadorHumano)return;
+
+    const j=jugadorHumano;
+
+    document.getElementById("perfil").innerHTML=`
+
+        <div class="card">
+
+            <h3>👤 ${j.nombre}</h3>
+
+            <p>
+            ${j.edad} años · ${j.posicion} · ${j.pie}
+            </p>
+
+            <p>
+            🧠 Especialidad:
+            <b>${j.especialidad}</b>
+            </p>
+
+            <p>
+            🎮 Estilo:
+            <b>${j.estilo}</b>
+            </p>
+
+            <p>
+            🧬 Personalidad:
+            <b>${j.personalidad}</b>
+            </p>
+
+        </div>
+
+
+        <div class="card">
+
+            <h3>📊 Atributos</h3>
+
+            <div class="stat">
+                <span>Velocidad</span>
+                <span>${Math.round(j.velocidad)}</span>
+            </div>
+
+            <div class="stat">
+                <span>Aceleración</span>
+                <span>${Math.round(j.aceleracion)}</span>
+            </div>
+
+            <div class="stat">
+                <span>Pase</span>
+                <span>${Math.round(j.pase)}</span>
+            </div>
+
+            <div class="stat">
+                <span>Tiro</span>
+                <span>${Math.round(j.tiro)}</span>
+            </div>
+
+            <div class="stat">
+                <span>Regate</span>
+                <span>${Math.round(j.regate)}</span>
+            </div>
+
+            <div class="stat">
+                <span>Defensa</span>
+                <span>${Math.round(j.defensa)}</span>
+            </div>
+
+            <div class="stat">
+                <span>Físico</span>
+                <span>${Math.round(j.fisico)}</span>
+            </div>
+
+            <div class="stat">
+                <span>Control</span>
+                <span>${Math.round(j.control)}</span>
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <h3>👨‍🏫 Entrenador</h3>
+
+            <p>
+            ${mundo.entrenador.nombre}
+            </p>
+
+            <p>
+            Filosofía:
+            ${mundo.entrenador.filosofia}
+            </p>
+
+            <p>
+            Paciencia:
+            ${mundo.entrenador.paciencia}
+            </p>
+
+            <p>
+            Confianza:
+            ${Math.round(j.confianza)}%
+            </p>
+
+        </div>
+
+
+        <div class="card">
+
+            <h3>🏟️ Club</h3>
+
+            <p>
+            ${mundo.club.nombre}
+            </p>
+
+            <p>
+            Fundado:
+            ${mundo.club.fundacion}
+            </p>
+
+            <p>
+            Filosofía:
+            ${mundo.club.filosofia}
+            </p>
+
+            <p>
+            Cantera:
+            ${mundo.club.cantera}/100
+            </p>
+
+            <p>
+            Reputación:
+            ${mundo.club.reputacion}/100
+            </p>
+
+        </div>
+    `;
+
+}
+
+
+/* =========================================================
+   EQUIPO
+========================================================= */
+
+function actualizarEquipo(){
+
+    const lista=
+        document.getElementById("teamList");
+
+    lista.innerHTML="";
+
+    equipoLocal.forEach(j=>{
+
+        let div=
+            document.createElement("div");
+
+        div.className="card";
+
+        div.innerHTML=`
+
+            <b>
+            ${j.nombre}
+            </b>
+
+            · ${j.posicion}
+
+            · ${j.rating}
+
+            <br>
+
+            <span class="small">
+
+            ${j.especialidad}
+            ·
+            ${j.estilo}
+
+            </span>
+
+        `;
+
+        lista.appendChild(div);
+
+    });
+
+}
+
+
+/* =========================================================
+   EVENTOS
+========================================================= */
+
+function actualizarEventos(){
+
+    const lista=
+        document.getElementById("eventList");
+
+    lista.innerHTML="";
+
+    eventos.forEach(e=>{
+
+        lista.innerHTML+=`
+
+            <div class="card event">
+
+                <b>${e.dia}</b>
+
+                <br>
+
+                ${e.texto}
+
+            </div>
+
+        `;
+
+    });
+
+}
+
+
+/* =========================================================
+   TERMINAR DÍA / PARTIDO
+========================================================= */
+
+function terminarPartido(){
+
+    if(!mundo)return;
+
+    partidoActivo=false;
+
+    /* Resultado simulado */
+
+    golesLocal=rango(0,4);
+    golesRival=rango(0,4);
+
+    let participacion=
+
+        jugadorHumano.confianza>65
+            ?random()
+            :random()*.7;
+
+
+    if(participacion>.55){
+
+        jugadorHumano.forma+=rango(2,8);
+
+        jugadorHumano.confianza+=rango(1,5);
+
+        evento(
+            "⭐ Has tenido minutos con el equipo."
+        );
+
+    }else{
+
+        jugadorHumano.forma-=rango(1,5);
+
+        evento(
+            "🪑 No has tenido muchos minutos."
+        );
+
+    }
+
+
+    jugadorHumano.fatiga+=rango(15,30);
+
+    avanzarDia();
+
+    setTimeout(()=>{
+
+        iniciarPartido();
+
+    },300);
+
+}
+
+
+/* =========================================================
+   INICIALIZACIÓN
+========================================================= */
+
+window.addEventListener("resize",()=>{
+
+    canvas.width=innerWidth;
+    canvas.height=innerHeight;
+
+});
+
+
+canvas.width=innerWidth;
+canvas.height=innerHeight;
+
+</script>
+
+</body>
+</html>
