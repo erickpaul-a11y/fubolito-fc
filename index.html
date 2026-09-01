@@ -1,18 +1,1429 @@
-<!DOCTYPE html> <html lang="es"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Partido de Fútbol - IA Táctica</title> <style> * { box-sizing: border-box; } body { margin: 0; background: #101214; color: white; font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; overflow: hidden; } #menu { width: 420px; max-width: 92vw; background: #202428; padding: 28px; border-radius: 14px; box-shadow: 0 10px 35px rgba(0,0,0,.5); text-align: center; } #menu h1 { margin-top: 0; color: #49d66b; } select, button { width: 100%; padding: 13px; margin-top: 12px; border: 0; border-radius: 8px; font-size: 16px; } select { background: #30353a; color: white; } button { background: #28a745; color: white; font-weight: bold; cursor: pointer; } button:hover { background: #20c95a; } #marcador { display: none; font-size: 22px; font-weight: bold; margin-bottom: 8px; } #info { display: none; margin-top: 8px; color: #ccc; font-size: 14px; } #campo { display: none; width: min(96vw, 1200px); height: auto; border: 3px solid white; background: #278b43; box-shadow: 0 8px 30px rgba(0,0,0,.5); } </style> </head> <body> <div id="menu"> <h1>⚽ Partido de Fútbol</h1> <p>Elige tu posición</p>
-<select id="posicionSelect">
-    <option value="POR">Portero</option>
-    <option value="DEF">Defensa central</option>
-    <option value="LAT">Lateral</option>
-    <option value="PIV">Mediocentro defensivo</option>
-    <option value="MC">Mediocampista</option>
-    <option value="MPO">Mediapunta</option>
-    <option value="EXT">Extremo</option>
-    <option value="DEL">Delantero</option>
-</select>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<button onclick="iniciarJuego()">Iniciar Partido</button>
+<title>Fútbol IA - Versión Avanzada</title>
 
-</div> <div id="marcador"> 🔴 Local <span id="golLocal">0</span> - <span id="golRival">0</span> Rival 🔵 </div>
-<canvas id="campo" width="1200" height="780"></canvas>
+<style>
+    * {
+        box-sizing: border-box;
+    }
 
-<div id="info"> WASD / Flechas = mover &nbsp; | &nbsp; ESPACIO = pasar/chutar </div> <script> const canvas = document.getElementById("campo"); const ctx = canvas.getContext("2d"); const W = canvas.width; const H = canvas.height; const CENTRO_X = W / 2; const CENTRO_Y = H / 2; /* Campo aproximadamente 105 x 68 metros. Escala: 1200 / 105 ≈ 11.4 px por metro. 780 / 68 ≈ 11.47 px por metro. */ const MARGEN_X = 25; const MARGEN_Y = 25; let equipoLocal = []; let equipoRival = []; let todosLosJugadores = []; let jugadorHumano = null; let golesLocal = 0; let golesRival = 0; let teclas = {}; let partidoIniciado = false; const balon = { x: CENTRO_X, y: CENTRO_Y, vx: 0, vy: 0, radio: 8, poseedor: null, cooldown: 0 }; window.addEventListener("keydown", e => { teclas[e.key.toLowerCase()] = true; if (["arrowup","arrowdown","arrowleft","arrowright"," "] .includes(e.key.toLowerCase())) { e.preventDefault(); } }); window.addEventListener("keyup", e => { teclas[e.key.toLowerCase()] = false; }); /* ========================================================= FORMACIONES ========================================================= */ const formacion433 = [ { rol:"POR", x:55, y:390 }, { rol:"LAT", x:180, y:120 }, { rol:"DEF", x:170, y:290 }, { rol:"DEF", x:170, y:490 }, { rol:"LAT", x:180, y:660 }, { rol:"PIV", x:350, y:390 }, { rol:"MC", x:460, y:270 }, { rol:"MC", x:460, y:510 }, { rol:"EXT", x:690, y:120 }, { rol:"DEL", x:720, y:390 }, { rol:"EXT", x:690, y:660 } ]; const formacion442 = [ { rol:"POR", x:55, y:390 }, { rol:"LAT", x:180, y:120 }, { rol:"DEF", x:170, y:290 }, { rol:"DEF", x:170, y:490 }, { rol:"LAT", x:180, y:660 }, { rol:"EXT", x:420, y:120 }, { rol:"MC", x:390, y:300 }, { rol:"MC", x:390, y:480 }, { rol:"EXT", x:420, y:660 }, { rol:"DEL", x:700, y:300 }, { rol:"DEL", x:700, y:480 } ]; /* ========================================================= INICIO ========================================================= */ function iniciarJuego() { const rolElegido = document.getElementById("posicionSelect").value; document.getElementById("menu").style.display = "none"; document.getElementById("marcador").style.display = "block"; document.getElementById("info").style.display = "block"; canvas.style.display = "block"; const formacion = Math.random() < .5 ? formacion433 : formacion442; let asignado = false; equipoLocal = formacion.map((p, i) => { let humano = false; if (!asignado && p.rol === rolElegido) { humano = true; asignado = true; } const jugador = crearJugador( "L" + i, p.rol, p.x, p.y, "local", humano ); if (humano) jugadorHumano = jugador; return jugador; }); /* Si por alguna razón no existe esa posición, controla al delantero. */ if (!jugadorHumano) { const delantero = equipoLocal.find(j => j.rol === "DEL"); delantero.esHumano = true; delantero.color = "#ff3333"; jugadorHumano = delantero; } equipoRival = formacion.map((p, i) => { /* Invertimos el campo. */ const x = W - p.x; return crearJugador( "R" + i, p.rol, x, p.y, "rival", false ); }); todosLosJugadores = [...equipoLocal, ...equipoRival]; partidoIniciado = true; reiniciarPartido(); requestAnimationFrame(bucleJuego); } /* ========================================================= CREAR JUGADOR ========================================================= */ function crearJugador(id, rol, x, y, equipo, humano) { return { id, rol, x, y, baseX: x, baseY: y, equipo, esHumano: humano, radio: 14, color: humano ? "#ff3333" : equipo === "local" ? "#c71919" : "#2878e8", velocidad: humano ? 4.2 : 2.8, decision: Math.random() * 50, objetivoX: x, objetivoY: y, presionando: false, tieneBalon: false }; } /* ========================================================= UTILIDADES ========================================================= */ function limitar(v, min, max) { return Math.max(min, Math.min(max, v)); } function distancia(a,b) { return Math.hypot( a.x - b.x, a.y - b.y ); } function equipoDe(jugador) { return jugador.equipo === "local" ? equipoLocal : equipoRival; } function rivalDe(jugador) { return jugador.equipo === "local" ? equipoRival : equipoLocal; } function direccionAtaque(jugador) { return jugador.equipo === "local" ? 1 : -1; } /* ========================================================= IA TÁCTICA ========================================================= */ function actualizarIA(jugador) { if (jugador.esHumano) return; jugador.decision--; const equipo = equipoDe(jugador); const rivales = rivalDe(jugador); const dir = direccionAtaque(jugador); /* ===================================================== PORTERO ===================================================== */ if (jugador.rol === "POR") { jugador.objetivoX = jugador.baseX; /* El portero sigue lateralmente la trayectoria del balón pero permanece cerca del arco. */ jugador.objetivoY = limitar( balon.y, 230, 550 ); /* Si el balón está cerca, puede salir. */ if ( !balon.poseedor && Math.abs(balon.x - jugador.baseX) < 170 ) { jugador.objetivoX = limitar( balon.x, jugador.baseX, jugador.baseX + dir * 100 ); } moverHaciaObjetivo(jugador, 0.08); return; } /* ===================================================== SI TIENE BALÓN ===================================================== */ if (balon.poseedor === jugador) { jugador.decision++; jugarConBalon(jugador); return; } /* ===================================================== DEFENSA CENTRAL ===================================================== */ if (jugador.rol === "DEF") { defenderCentral(jugador); return; } /* ===================================================== LATERAL ===================================================== */ if (jugador.rol === "LAT") { jugarLateral(jugador); return; } /* ===================================================== PIVOTE ===================================================== */ if (jugador.rol === "PIV") { jugarPivote(jugador); return; } /* ===================================================== MEDIOCAMPISTA ===================================================== */ if (jugador.rol === "MC") { jugarMediocampista(jugador); return; } /* ===================================================== MEDIAPUNTA ===================================================== */ if (jugador.rol === "MPO") { jugarMediapunta(jugador); return; } /* ===================================================== EXTREMO ===================================================== */ if (jugador.rol === "EXT") { jugarExtremo(jugador); return; } /* ===================================================== DELANTERO ===================================================== */ if (jugador.rol === "DEL") { jugarDelantero(jugador); return; } } /* ========================================================= DEFENSAS ========================================================= */ function defenderCentral(jugador) { const dir = direccionAtaque(jugador); const atacantes = rivalDe(jugador).filter( r => r.rol === "DEL" || r.rol === "EXT" || r.rol === "MPO" ); let objetivo = null; let menor = Infinity; atacantes.forEach(r => { const d = distancia(jugador, r); if (d < menor) { menor = d; objetivo = r; } }); /* Si un atacante entra en nuestra zona, el central lo sigue. */ if ( objetivo && ( dir === 1 ? objetivo.x < 430 : objetivo.x > W - 430 ) ) { jugador.objetivoX = objetivo.x - dir * 25; jugador.objetivoY = objetivo.y; } else { /* Mantener línea defensiva. */ jugador.objetivoX = jugador.baseX + (balon.x - CENTRO_X) * .10; jugador.objetivoY = jugador.baseY + (balon.y - CENTRO_Y) * .08; } /* Presión al poseedor cercano. */ if ( balon.poseedor && balon.poseedor.equipo !== jugador.equipo && distancia(jugador, balon.poseedor) < 180 ) { jugador.objetivoX = balon.poseedor.x - dir * 22; jugador.objetivoY = balon.poseedor.y; } moverHaciaObjetivo(jugador, .065); } /* ========================================================= LATERALES ========================================================= */ function jugarLateral(jugador) { const dir = direccionAtaque(jugador); const estaAtacando = balon.poseedor && balon.poseedor.equipo === jugador.equipo; /* Cuando el equipo ataca, el lateral sube. */ if (estaAtacando) { jugador.objetivoX = jugador.baseX + dir * 180; jugador.objetivoY = jugador.baseY; } else { /* Repliegue defensivo. */ jugador.objetivoX = jugador.baseX + (balon.x - CENTRO_X) * .12; jugador.objetivoY = jugador.baseY + (balon.y - jugador.baseY) * .15; } /* Si hay rival por su banda, marca. */ const rivalBanda = rivalDe(jugador) .filter(r => r.rol === "EXT") .sort( (a,b) => distancia(jugador,a) - distancia(jugador,b) )[0]; if ( rivalBanda && distancia(jugador,rivalBanda) < 170 ) { jugador.objetivoX = rivalBanda.x - dir * 20; jugador.objetivoY = rivalBanda.y; } moverHaciaObjetivo(jugador, .055); } /* ========================================================= PIVOTE ========================================================= */ function jugarPivote(jugador) { const dir = direccionAtaque(jugador); /* El pivote protege a los centrales. */ jugador.objetivoX = CENTRO_X - dir * 90; jugador.objetivoY = CENTRO_Y + (balon.y - CENTRO_Y) * .35; /* Si el balón está cerca, ayuda. */ if ( balon.poseedor && balon.poseedor.equipo !== jugador.equipo && distancia(jugador,balon.poseedor) < 190 ) { jugador.objetivoX = balon.poseedor.x - dir * 30; jugador.objetivoY = balon.poseedor.y; } moverHaciaObjetivo(jugador, .06); } /* ========================================================= MEDIOCAMPISTA ========================================================= */ function jugarMediocampista(jugador) { const dir = direccionAtaque(jugador); /* Movimiento de ida y vuelta. */ let avance = (balon.x - CENTRO_X) * .25; jugador.objetivoX = jugador.baseX + avance; jugador.objetivoY = jugador.baseY + (balon.y - jugador.baseY) * .28; /* Apoyo al ataque. */ if ( balon.poseedor && balon.poseedor.equipo === jugador.equipo ) { jugador.objetivoX += dir * 60; } /* Presión moderada. */ if ( balon.poseedor && balon.poseedor.equipo !== jugador.equipo && distancia(jugador, balon.poseedor) < 150 ) { jugador.objetivoX = balon.poseedor.x - dir * 15; jugador.objetivoY = balon.poseedor.y; } moverHaciaObjetivo(jugador, .055); } /* ========================================================= MEDIAPUNTA ========================================================= */ function jugarMediapunta(jugador) { const dir = direccionAtaque(jugador); /* Busca espacios entre mediocampo y defensa. */ jugador.objetivoX = jugador.baseX + dir * 90; jugador.objetivoY = CENTRO_Y + (balon.y - CENTRO_Y) * .45; /* Si el balón está en banda, se mueve hacia el espacio. */ if ( balon.poseedor && balon.poseedor.equipo === jugador.equipo ) { if ( Math.abs(balon.y - jugador.y) > 150 ) { jugador.objetivoY = balon.y * .65 + jugador.baseY * .35; } } moverHaciaObjetivo(jugador, .055); } /* ========================================================= EXTREMOS ========================================================= */ function jugarExtremo(jugador) { const dir = direccionAtaque(jugador); /* Mantener amplitud. */ const banda = jugador.baseY < CENTRO_Y ? 115 : H - 115; /* Cuando el equipo tiene el balón, el extremo se adelanta. */ if ( balon.poseedor && balon.poseedor.equipo === jugador.equipo ) { jugador.objetivoX = jugador.baseX + dir * 170; jugador.objetivoY = banda; } else { /* Repliegue. */ jugador.objetivoX = jugador.baseX + (balon.x - CENTRO_X) * .18; jugador.objetivoY = banda + (balon.y - banda) * .15; } /* Si el balón está en su banda, se acerca para ofrecer pase. */ if ( balon.poseedor && balon.poseedor.equipo === jugador.equipo && Math.abs(balon.y - jugador.y) < 170 ) { jugador.objetivoX = balon.poseedor.x + dir * 100; } moverHaciaObjetivo(jugador, .06); } /* ========================================================= DELANTERO ========================================================= */ function jugarDelantero(jugador) { const dir = direccionAtaque(jugador); /* El delantero no persigue el balón por todo el campo. */ jugador.objetivoX = jugador.baseX + dir * 100; /* Desmarque diagonal. */ jugador.objetivoY = CENTRO_Y + Math.sin(Date.now() / 700) * 100; /* Si un compañero tiene el balón, busca la espalda de la defensa. */ if ( balon.poseedor && balon.poseedor.equipo === jugador.equipo ) { jugador.objetivoX = balon.poseedor.x + dir * 130; } moverHaciaObjetivo(jugador, .065); } /* ========================================================= MOVIMIENTO ========================================================= */ function moverHaciaObjetivo(jugador, factor) { const dx = jugador.objetivoX - jugador.x; const dy = jugador.objetivoY - jugador.y; const d = Math.hypot(dx,dy); if (d > 3) { const velocidad = jugador.velocidad * Math.min(1, d / 50); jugador.x += dx / d * velocidad * (factor * 15); jugador.y += dy / d * velocidad * (factor * 15); } jugador.x = limitar(jugador.x, 15, W - 15); jugador.y = limitar(jugador.y, 15, H - 15); } /* ========================================================= JUGAR CON BALÓN ========================================================= */ function jugarConBalon(jugador) { const dir = direccionAtaque(jugador); const porteriaX = jugador.equipo === "local" ? W : 0; const distanciaPorteria = Math.abs( porteriaX - jugador.x ); /* Buscar compañero. */ const compañeros = equipoDe(jugador) .filter( j => j !== jugador && j.rol !== "POR" ); let mejorPase = null; let mejorPuntuacion = -Infinity; compañeros.forEach(comp => { const haciaAdelante = (comp.x - jugador.x) * dir; const distanciaComp = distancia(jugador,comp); if ( distanciaComp > 80 && distanciaComp < 400 && haciaAdelante > -80 ) { const puntuacion = haciaAdelante - Math.abs(comp.y - jugador.y) * .3; if ( puntuacion > mejorPuntuacion ) { mejorPuntuacion = puntuacion; mejorPase = comp; } } }); /* Tiro. */ if ( distanciaPorteria < 260 ) { chutar(jugador); return; } /* Pase ocasional. */ if ( mejorPase && jugador.decision > 55 ) { pasar(jugador, mejorPase); jugador.decision = 0; return; } /* Conducir. */ jugador.x += dir * jugador.velocidad * .75; /* Regate / movimiento vertical. */ if ( Math.random() < .02 ) { jugador.y += (Math.random() < .5 ? -1 : 1) * 25; } } /* ========================================================= PASE ========================================================= */ function pasar(origen, destino) { const dx = destino.x - origen.x; const dy = destino.y - origen.y; const d = Math.hypot(dx,dy); balon.poseedor = null; balon.cooldown = 18; balon.x = origen.x; balon.y = origen.y; balon.vx = dx / d * 10; balon.vy = dy / d * 10; } /* ========================================================= TIRO ========================================================= */ function chutar(jugador) { const dir = direccionAtaque(jugador); const porteriaX = jugador.equipo === "local" ? W : 0; const objetivoY = CENTRO_Y + (Math.random() - .5) * 130; const dx = porteriaX - jugador.x; const dy = objetivoY - jugador.y; const d = Math.hypot(dx,dy); balon.poseedor = null; balon.cooldown = 25; balon.x = jugador.x; balon.y = jugador.y; balon.vx = dx / d * 14; balon.vy = dy / d * 14; } /* ========================================================= BALÓN ========================================================= */ function actualizarBalon() { if (balon.cooldown > 0) balon.cooldown--; if (balon.poseedor) { const jugador = balon.poseedor; const dir = direccionAtaque(jugador); balon.x = jugador.x + dir * 17; balon.y = jugador.y; balon.vx = 0; balon.vy = 0; } else { balon.x += balon.vx; balon.y += balon.vy; balon.vx *= .975; balon.vy *= .975; /* Buscar jugador que recibe. */ if (balon.cooldown <= 0) { let mejor = null; let menor = Infinity; todosLosJugadores.forEach(j => { const d = distancia( { x: balon.x, y: balon.y }, j ); if ( d < j.radio + balon.radio + 5 && d < menor ) { menor = d; mejor = j; } }); if (mejor) { balon.poseedor = mejor; mejor.decision = 0; } } } /* Bordes. */ if (balon.y < 8) { balon.y = 8; balon.vy *= -0.8; } if (balon.y > H - 8) { balon.y = H - 8; balon.vy *= -0.8; } /* Goles. */ if ( balon.y > 285 && balon.y < 495 ) { if (balon.x <= 0) { golesRival++; document.getElementById( "golRival" ).textContent = golesRival; reiniciarPartido(); } else if (balon.x >= W) { golesLocal++; document.getElementById( "golLocal" ).textContent = golesLocal; reiniciarPartido(); } } /* Rebote lateral si no entra en portería. */ if ( (balon.x < 0 || balon.x > W) && !(balon.y > 285 && balon.y < 495) ) { balon.x = limitar(balon.x,8,W-8); balon.vx *= -0.8; } } /* ========================================================= HUMANO ========================================================= */ function actualizarHumano() { if (!jugadorHumano) return; const j = jugadorHumano; let dx = 0; let dy = 0; if ( teclas["w"] || teclas["arrowup"] ) dy--; if ( teclas["s"] || teclas["arrowdown"] ) dy++; if ( teclas["a"] || teclas["arrowleft"] ) dx--; if ( teclas["d"] || teclas["arrowright"] ) dx++; if (dx !== 0 || dy !== 0) { const d = Math.hypot(dx,dy); j.x += dx / d * j.velocidad; j.y += dy / d * j.velocidad; } j.x = limitar(j.x,15,W-15); j.y = limitar(j.y,15,H-15); /* Si el jugador controla el balón, espacio permite pasar. */ if ( teclas[" "] && balon.poseedor === j ) { const compañero = encontrarMejorCompañero(j); if (compañero) { pasar(j, compañero); teclas[" "] = false; } } /* Recuperar balón. */ if ( !balon.poseedor && balon.cooldown <= 0 && distancia( { x:balon.x, y:balon.y }, j ) < j.radio + balon.radio + 5 ) { balon.poseedor = j; } } /* ========================================================= MEJOR COMPAÑERO ========================================================= */ function encontrarMejorCompañero(jugador) { const dir = direccionAtaque(jugador); let mejor = null; let puntuacion = -Infinity; equipoDe(jugador) .filter(j => j !== jugador && j.rol !== "POR") .forEach(j => { const adelante = (j.x - jugador.x) * dir; const distanciaJugador = distancia(jugador,j); if ( distanciaJugador > 70 && distanciaJugador < 500 ) { const score = adelante - Math.abs(j.y-jugador.y)*.2; if (score > puntuacion) { puntuacion = score; mejor = j; } } }); return mejor; } /* ========================================================= COLISIONES ========================================================= */ function resolverColisiones() { for ( let i = 0; i < todosLosJugadores.length; i++ ) { for ( let j = i + 1; j < todosLosJugadores.length; j++ ) { const a = todosLosJugadores[i]; const b = todosLosJugadores[j]; /* Evitar que compañeros se amontonen demasiado. */ const dx = b.x - a.x; const dy = b.y - a.y; const d = Math.hypot(dx,dy); const minimo = a.radio + b.radio; if ( d < minimo && d > 0 ) { const fuerza = (minimo-d)*.35; a.x -= dx/d*fuerza; a.y -= dy/d*fuerza; b.x += dx/d*fuerza; b.y += dy/d*fuerza; } } } } /* ========================================================= REINICIAR ========================================================= */ function reiniciarPartido() { balon.x = CENTRO_X; balon.y = CENTRO_Y; balon.vx = 0; balon.vy = 0; balon.poseedor = null; balon.cooldown = 50; todosLosJugadores.forEach(j => { j.x = j.baseX; j.y = j.baseY; j.objetivoX = j.baseX; j.objetivoY = j.baseY; }); /* Dar el saque al equipo local aproximadamente después del reinicio. */ setTimeout(() => { if (!partidoIniciado) return; const saque = equipoLocal.find( j => j.rol === "DEL" ); if (saque) { balon.poseedor = saque; balon.x = saque.x; balon.y = saque.y; } }, 900); } /* ========================================================= DIBUJAR CAMPO ========================================================= */ function dibujarCampo() { /* Césped. */ ctx.fillStyle = "#278b43"; ctx.fillRect(0,0,W,H); /* Franjas de césped. */ for (let x=0; x<W; x+=80) { ctx.fillStyle = (x/80)%2 === 0 ? "rgba(255,255,255,.025)" : "rgba(0,0,0,.025)"; ctx.fillRect(x,0,80,H); } ctx.strokeStyle = "rgba(255,255,255,.9)"; ctx.lineWidth = 3; /* Línea exterior. */ ctx.strokeRect( MARGEN_X, MARGEN_Y, W-MARGEN_X*2, H-MARGEN_Y*2 ); /* Medio campo. */ ctx.beginPath(); ctx.moveTo( CENTRO_X, MARGEN_Y ); ctx.lineTo( CENTRO_X, H-MARGEN_Y ); ctx.stroke(); /* Círculo central. */ ctx.beginPath(); ctx.arc( CENTRO_X, CENTRO_Y, 95, 0, Math.PI*2 ); ctx.stroke(); /* Punto central. */ ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc( CENTRO_X, CENTRO_Y, 5, 0, Math.PI*2 ); ctx.fill(); /* Áreas. */ const areaW = 185; const areaH = 390; ctx.strokeRect( MARGEN_X, CENTRO_Y-areaH/2, areaW, areaH ); ctx.strokeRect( W-MARGEN_X-areaW, CENTRO_Y-areaH/2, areaW, areaH ); /* Áreas pequeñas. */ const pequenaW = 70; const pequenaH = 210; ctx.strokeRect( MARGEN_X, CENTRO_Y-pequenaH/2, pequenaW, pequenaH ); ctx.strokeRect( W-MARGEN_X-pequenaW, CENTRO_Y-pequenaH/2, pequenaW, pequenaH ); /* Porterías. */ ctx.strokeRect( 0, CENTRO_Y-105, 25, 210 ); ctx.strokeRect( W-25, CENTRO_Y-105, 25, 210 ); /* Redes. */ ctx.fillStyle = "rgba(255,255,255,.12)"; ctx.fillRect( 0, CENTRO_Y-105, 25, 210 ); ctx.fillRect( W-25, CENTRO_Y-105, 25, 210 ); /* Esquinas. */ ctx.beginPath(); ctx.arc( MARGEN_X, MARGEN_Y, 18, 0, Math.PI/2 ); ctx.stroke(); ctx.beginPath(); ctx.arc( W-MARGEN_X, MARGEN_Y, 18, Math.PI/2, Math.PI ); ctx.stroke(); ctx.beginPath(); ctx.arc( MARGEN_X, H-MARGEN_Y, 18, -Math.PI/2, 0 ); ctx.stroke(); ctx.beginPath(); ctx.arc( W-MARGEN_X, H-MARGEN_Y, 18, Math.PI, Math.PI*1.5 ); ctx.stroke(); } /* ========================================================= DIBUJAR JUGADORES ========================================================= */ function dibujarJugadores() { todosLosJugadores.forEach(j => { /* Sombra. */ ctx.beginPath(); ctx.ellipse( j.x, j.y+11, j.radio, 5, 0, 0, Math.PI*2 ); ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.fill(); /* Jugador. */ ctx.beginPath(); ctx.arc( j.x, j.y, j.radio, 0, Math.PI*2 ); ctx.fillStyle = j.color; ctx.fill(); ctx.strokeStyle = j.esHumano ? "#ffe600" : "white"; ctx.lineWidth = j.esHumano ? 3 : 1.5; ctx.stroke(); /* Indicador del jugador humano. */ if (j.esHumano) { ctx.beginPath(); ctx.arc( j.x, j.y, j.radio+6, 0, Math.PI*2 ); ctx.strokeStyle = "#ffff00"; ctx.lineWidth = 2; ctx.stroke(); } /* Rol. */ ctx.fillStyle = "white"; ctx.font = "bold 11px Arial"; ctx.textAlign = "center"; ctx.fillText( j.rol, j.x, j.y-20 ); }); } /* ========================================================= DIBUJAR BALÓN ========================================================= */ function dibujarBalon() { ctx.beginPath(); ctx.arc( balon.x, balon.y, balon.radio, 0, Math.PI*2 ); ctx.fillStyle = "white"; ctx.fill(); ctx.strokeStyle = "black"; ctx.lineWidth = 1.5; ctx.stroke(); /* Pequeño patrón. */ ctx.fillStyle = "#222"; ctx.beginPath(); ctx.arc( balon.x, balon.y, 2.5, 0, Math.PI*2 ); ctx.fill(); } /* ========================================================= ACTUALIZACIÓN ========================================================= */ function actualizar() { if (!partidoIniciado) return; actualizarHumano(); todosLosJugadores.forEach( actualizarIA ); resolverColisiones(); actualizarBalon(); } /* ========================================================= RENDER ========================================================= */ function renderizar() { ctx.clearRect( 0, 0, W, H ); dibujarCampo(); dibujarJugadores(); dibujarBalon(); } /* ========================================================= BUCLE ========================================================= */ function bucleJuego() { actualizar(); renderizar(); requestAnimationFrame( bucleJuego ); } </script> </body> </html>
+    body {
+        margin: 0;
+        background: #101820;
+        color: white;
+        font-family: Arial, sans-serif;
+        overflow: hidden;
+    }
+
+    #menu {
+        position: fixed;
+        z-index: 20;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(10, 15, 20, 0.96);
+        padding: 30px;
+        border-radius: 18px;
+        text-align: center;
+        box-shadow: 0 0 40px rgba(0,0,0,.6);
+    }
+
+    #menu h1 {
+        margin-top: 0;
+        color: #ffd900;
+    }
+
+    #menu select,
+    #menu button {
+        width: 260px;
+        padding: 13px;
+        margin-top: 12px;
+        border-radius: 8px;
+        border: none;
+        font-size: 16px;
+    }
+
+    #menu button {
+        background: #e51c23;
+        color: white;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    #menu button:hover {
+        background: #ff3038;
+    }
+
+    #marcador {
+        display: none;
+        position: fixed;
+        z-index: 10;
+        top: 15px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0,0,0,.75);
+        padding: 10px 25px;
+        border-radius: 12px;
+        font-size: 22px;
+        font-weight: bold;
+    }
+
+    #info {
+        display: none;
+        position: fixed;
+        z-index: 10;
+        bottom: 15px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0,0,0,.75);
+        padding: 9px 18px;
+        border-radius: 10px;
+        font-size: 14px;
+    }
+
+    #campo {
+        display: none;
+        position: fixed;
+        left: 0;
+        top: 0;
+        background: #278c42;
+    }
+</style>
+</head>
+
+<body>
+
+<div id="menu">
+
+    <h1>⚽ FÚTBOL IA</h1>
+
+    <p>Elige tu posición</p>
+
+    <select id="posicionSelect">
+        <option value="POR">Portero</option>
+        <option value="DEF">Defensa central</option>
+        <option value="LAT">Lateral</option>
+        <option value="PIV">Mediocentro defensivo</option>
+        <option value="MC">Mediocampista</option>
+        <option value="MPO">Mediapunta</option>
+        <option value="EXT">Extremo</option>
+        <option value="DEL">Delantero</option>
+    </select>
+
+    <br>
+
+    <button onclick="iniciarJuego()">
+        Iniciar Partido
+    </button>
+
+</div>
+
+
+<div id="marcador">
+    🔴 Local
+    <span id="golLocal">0</span>
+    -
+    <span id="golRival">0</span>
+    Rival 🔵
+</div>
+
+
+<canvas id="campo" width="2100" height="1200"></canvas>
+
+
+<div id="info">
+    WASD / Flechas = mover
+    &nbsp; | &nbsp;
+    ESPACIO = pase
+    &nbsp; | &nbsp;
+    E = sprint
+</div>
+
+
+<script>
+
+/* =========================================================
+   CONFIGURACIÓN GENERAL
+========================================================= */
+
+const canvas = document.getElementById("campo");
+const ctx = canvas.getContext("2d");
+
+const W = 2100;
+const H = 1200;
+
+const CENTRO_X = W / 2;
+const CENTRO_Y = H / 2;
+
+const MARGEN = 45;
+
+let equipoLocal = [];
+let equipoRival = [];
+let todosLosJugadores = [];
+
+let jugadorHumano = null;
+
+let partidoIniciado = false;
+
+let golesLocal = 0;
+let golesRival = 0;
+
+let teclas = {};
+
+let camara = {
+    x: 0,
+    y: 0
+};
+
+
+/* =========================================================
+   BALÓN
+========================================================= */
+
+const balon = {
+
+    x: CENTRO_X,
+    y: CENTRO_Y,
+
+    vx: 0,
+    vy: 0,
+
+    radio: 11,
+
+    poseedor: null,
+
+    cooldown: 0
+
+};
+
+
+/* =========================================================
+   CONTROLES
+========================================================= */
+
+window.addEventListener("keydown", e => {
+
+    const tecla = e.key.toLowerCase();
+
+    teclas[tecla] = true;
+
+    if (
+        tecla === " " ||
+        tecla === "arrowup" ||
+        tecla === "arrowdown" ||
+        tecla === "arrowleft" ||
+        tecla === "arrowright"
+    ) {
+        e.preventDefault();
+    }
+
+});
+
+
+window.addEventListener("keyup", e => {
+
+    teclas[e.key.toLowerCase()] = false;
+
+});
+
+
+/* =========================================================
+   FORMACIONES
+========================================================= */
+
+const formacion433 = [
+
+    {
+        rol: "POR",
+        x: 120,
+        y: 600
+    },
+
+    {
+        rol: "LAT",
+        x: 390,
+        y: 170
+    },
+
+    {
+        rol: "DEF",
+        x: 360,
+        y: 450
+    },
+
+    {
+        rol: "DEF",
+        x: 360,
+        y: 750
+    },
+
+    {
+        rol: "LAT",
+        x: 390,
+        y: 1030
+    },
+
+    {
+        rol: "PIV",
+        x: 690,
+        y: 600
+    },
+
+    {
+        rol: "MC",
+        x: 850,
+        y: 380
+    },
+
+    {
+        rol: "MC",
+        x: 850,
+        y: 820
+    },
+
+    {
+        rol: "EXT",
+        x: 1180,
+        y: 150
+    },
+
+    {
+        rol: "DEL",
+        x: 1250,
+        y: 600
+    },
+
+    {
+        rol: "EXT",
+        x: 1180,
+        y: 1050
+    }
+
+];
+
+
+const formacion442 = [
+
+    {
+        rol: "POR",
+        x: 120,
+        y: 600
+    },
+
+    {
+        rol: "LAT",
+        x: 390,
+        y: 160
+    },
+
+    {
+        rol: "DEF",
+        x: 360,
+        y: 450
+    },
+
+    {
+        rol: "DEF",
+        x: 360,
+        y: 750
+    },
+
+    {
+        rol: "LAT",
+        x: 390,
+        y: 1040
+    },
+
+    {
+        rol: "EXT",
+        x: 730,
+        y: 170
+    },
+
+    {
+        rol: "MC",
+        x: 720,
+        y: 440
+    },
+
+    {
+        rol: "MC",
+        x: 720,
+        y: 760
+    },
+
+    {
+        rol: "EXT",
+        x: 730,
+        y: 1030
+    },
+
+    {
+        rol: "DEL",
+        x: 1200,
+        y: 440
+    },
+
+    {
+        rol: "DEL",
+        x: 1200,
+        y: 760
+    }
+
+];
+
+
+/* =========================================================
+   INICIAR PARTIDO
+========================================================= */
+
+function iniciarJuego() {
+
+    const rolElegido =
+        document.getElementById("posicionSelect").value;
+
+    document.getElementById("menu").style.display = "none";
+
+    document.getElementById("marcador").style.display = "block";
+
+    document.getElementById("info").style.display = "block";
+
+    canvas.style.display = "block";
+
+    const formacion =
+        Math.random() < 0.5
+            ? formacion433
+            : formacion442;
+
+
+    let asignado = false;
+
+
+    equipoLocal = formacion.map((p, i) => {
+
+        let humano = false;
+
+        if (!asignado && p.rol === rolElegido) {
+
+            humano = true;
+
+            asignado = true;
+
+        }
+
+        return crearJugador(
+            "L" + i,
+            p.rol,
+            p.x,
+            p.y,
+            "local",
+            humano
+        );
+
+    });
+
+
+    if (!jugadorHumano) {
+
+        jugadorHumano =
+            equipoLocal.find(j => j.esHumano);
+
+    }
+
+
+    equipoRival = formacion.map((p, i) => {
+
+        return crearJugador(
+            "R" + i,
+            p.rol,
+            W - p.x,
+            p.y,
+            "rival",
+            false
+        );
+
+    });
+
+
+    todosLosJugadores = [
+        ...equipoLocal,
+        ...equipoRival
+    ];
+
+
+    partidoIniciado = true;
+
+    reiniciarPartido();
+
+    requestAnimationFrame(bucleJuego);
+
+}
+
+
+/* =========================================================
+   CREAR JUGADOR
+========================================================= */
+
+function crearJugador(
+    id,
+    rol,
+    x,
+    y,
+    equipo,
+    humano
+) {
+
+    return {
+
+        id,
+
+        rol,
+
+        equipo,
+
+        x,
+        y,
+
+        baseX: x,
+        baseY: y,
+
+        esHumano: humano,
+
+        radio: 20,
+
+        color:
+            humano
+                ? "#ff3333"
+                : equipo === "local"
+                    ? "#c71919"
+                    : "#2878e8",
+
+        velocidad:
+            humano
+                ? 5.5
+                : 3.7,
+
+        sprint: 7,
+
+        objetivoX: x,
+        objetivoY: y,
+
+        decision: Math.random() * 100,
+
+        tieneBalon: false,
+
+        presionando: false,
+
+        energia: 100,
+
+        paseCooldown: 0,
+
+        roboCooldown: 0,
+
+        inteligencia:
+            0.75 + Math.random() * 0.25
+
+    };
+
+}
+
+
+/* =========================================================
+   UTILIDADES
+========================================================= */
+
+function limitar(v, min, max) {
+
+    return Math.max(
+        min,
+        Math.min(max, v)
+    );
+
+}
+
+
+function distancia(a, b) {
+
+    return Math.hypot(
+        a.x - b.x,
+        a.y - b.y
+    );
+
+}
+
+
+function equipoDe(jugador) {
+
+    return jugador.equipo === "local"
+        ? equipoLocal
+        : equipoRival;
+
+}
+
+
+function rivalDe(jugador) {
+
+    return jugador.equipo === "local"
+        ? equipoRival
+        : equipoLocal;
+
+}
+
+
+function direccionAtaque(jugador) {
+
+    return jugador.equipo === "local"
+        ? 1
+        : -1;
+
+}
+
+
+/* =========================================================
+   IA PRINCIPAL
+========================================================= */
+
+function actualizarIA(jugador) {
+
+    if (jugador.esHumano) {
+        return;
+    }
+
+
+    if (jugador.paseCooldown > 0) {
+        jugador.paseCooldown--;
+    }
+
+
+    if (jugador.roboCooldown > 0) {
+        jugador.roboCooldown--;
+    }
+
+
+    /*
+       SI TIENE EL BALÓN
+    */
+
+    if (balon.poseedor === jugador) {
+
+        decidirConBalon(jugador);
+
+        return;
+
+    }
+
+
+    /*
+       SI SU EQUIPO TIENE EL BALÓN
+    */
+
+    if (
+        balon.poseedor &&
+        balon.poseedor.equipo === jugador.equipo
+    ) {
+
+        moverseEnAtaque(jugador);
+
+        return;
+
+    }
+
+
+    /*
+       SI EL RIVAL TIENE EL BALÓN
+    */
+
+    if (
+        balon.poseedor &&
+        balon.poseedor.equipo !== jugador.equipo
+    ) {
+
+        defenderEnEquipo(jugador);
+
+        return;
+
+    }
+
+
+    /*
+       BALÓN SUELTO
+    */
+
+    irAlBalonSiConviene(jugador);
+
+}
+
+
+/* =========================================================
+   DECISIÓN CON BALÓN
+========================================================= */
+
+function decidirConBalon(jugador) {
+
+    const dir =
+        direccionAtaque(jugador);
+
+    const porteriaX =
+        jugador.equipo === "local"
+            ? W
+            : 0;
+
+
+    const distanciaPorteria =
+        Math.abs(
+            porteriaX - jugador.x
+        );
+
+
+    const rivales =
+        rivalDe(jugador);
+
+
+    const rivalesCerca =
+        rivales.filter(r =>
+            distancia(jugador, r) < 230
+        );
+
+
+    /*
+       TIRO
+    */
+
+    if (
+        distanciaPorteria < 350 &&
+        Math.random() < 0.035
+    ) {
+
+        chutar(jugador);
+
+        return;
+
+    }
+
+
+    /*
+       SI ESTÁ MUY PRESIONADO,
+       BUSCAR PASE
+    */
+
+    if (
+        rivalesCerca.length >= 2
+    ) {
+
+        const compañero =
+            buscarMejorPase(jugador, true);
+
+        if (compañero) {
+
+            pasar(
+                jugador,
+                compañero
+            );
+
+            return;
+
+        }
+
+    }
+
+
+    /*
+       TRIANGULACIÓN
+    */
+
+    const triangulo =
+        buscarTriangulacion(jugador);
+
+
+    if (
+        triangulo &&
+        Math.random() < 0.045
+    ) {
+
+        pasar(
+            jugador,
+            triangulo
+        );
+
+        return;
+
+    }
+
+
+    /*
+       PASE NORMAL
+    */
+
+    if (
+        jugador.decision > 70 &&
+        Math.random() < 0.04
+    ) {
+
+        const compañero =
+            buscarMejorPase(jugador, false);
+
+        if (compañero) {
+
+            pasar(
+                jugador,
+                compañero
+            );
+
+            return;
+
+        }
+
+    }
+
+
+    /*
+       CONDUCIR
+    */
+
+    conducirBalon(jugador);
+
+}
+
+
+/* =========================================================
+   BUSCAR MEJOR PASE
+========================================================= */
+
+function buscarMejorPase(
+    jugador,
+    emergencia
+) {
+
+    const dir =
+        direccionAtaque(jugador);
+
+
+    const compañeros =
+        equipoDe(jugador)
+            .filter(j =>
+                j !== jugador &&
+                j.rol !== "POR"
+            );
+
+
+    let mejor = null;
+
+    let mejorPuntuacion = -Infinity;
+
+
+    compañeros.forEach(comp => {
+
+        const d =
+            distancia(
+                jugador,
+                comp
+            );
+
+
+        if (d < 100 || d > 650) {
+            return;
+        }
+
+
+        const avance =
+            (comp.x - jugador.x) * dir;
+
+
+        const espacio =
+            espacioAlrededor(comp);
+
+
+        const linea =
+            lineaDePaseLibre(
+                jugador,
+                comp
+            );
+
+
+        let puntuacion = 0;
+
+
+        puntuacion += avance * 0.45;
+
+        puntuacion += espacio * 0.7;
+
+        puntuacion += linea * 300;
+
+        puntuacion -= d * 0.12;
+
+
+        if (emergencia) {
+
+            puntuacion +=
+                espacio * 300;
+
+        }
+
+
+        /*
+           Preferir jugadores que
+           estén formando triángulos.
+        */
+
+        if (
+            estaEnTriangulo(
+                jugador,
+                comp
+            )
+        ) {
+
+            puntuacion += 160;
+
+        }
+
+
+        puntuacion +=
+            Math.random() * 50;
+
+
+        if (
+            puntuacion >
+            mejorPuntuacion
+        ) {
+
+            mejorPuntuacion =
+                puntuacion;
+
+            mejor = comp;
+
+        }
+
+    });
+
+
+    return mejor;
+
+}
+
+
+/* =========================================================
+   TRIANGULACIONES
+========================================================= */
+
+function buscarTriangulacion(jugador) {
+
+    const compañeros =
+        equipoDe(jugador)
+            .filter(j =>
+                j !== jugador &&
+                j.rol !== "POR"
+            );
+
+
+    for (const compañero of compañeros) {
+
+        if (
+            distancia(
+                jugador,
+                compañero
+            ) > 500
+        ) {
+            continue;
+        }
+
+
+        const tercerJugador =
+            compañeros.find(otro =>
+                otro !== compañero &&
+                distancia(
+                    compañero,
+                    otro
+                ) < 550 &&
+                distancia(
+                    jugador,
+                    otro
+                ) < 600
+            );
+
+
+        if (tercerJugador) {
+
+            if (
+                lineaDePaseLibre(
+                    jugador,
+                    compañero
+                ) > 0.5
+            ) {
+
+                return compañero;
+
+            }
+
+        }
+
+    }
+
+
+    return null;
+
+}
+
+
+/* =========================================================
+   DETECTAR TRIÁNGULO
+========================================================= */
+
+function estaEnTriangulo(a, b) {
+
+    const compañeros =
+        equipoDe(a)
+            .filter(j =>
+                j !== a &&
+                j !== b
+            );
+
+
+    return compañeros.some(c => {
+
+        return (
+            distancia(a, c) < 600 &&
+            distancia(b, c) < 600
+        );
+
+    });
+
+}
+
+
+/* =========================================================
+   ESPACIO ALREDEDOR
+========================================================= */
+
+function espacioAlrededor(jugador) {
+
+    const rivales =
+        rivalDe(jugador);
+
+
+    let minimo = 9999;
+
+
+    rivales.forEach(r => {
+
+        const d =
+            distancia(
+                jugador,
+                r
+            );
+
+
+        minimo =
+            Math.min(
+                minimo,
+                d
+            );
+
+    });
+
+
+    return limitar(
+        minimo / 250,
+        0,
+        2
+    );
+
+}
+
+
+/* =========================================================
+   LÍNEA DE PASE
+========================================================= */
+
+function lineaDePaseLibre(
+    origen,
+    destino
+) {
+
+    const dx =
+        destino.x - origen.x;
+
+    const dy =
+        destino.y - origen.y;
+
+
+    const distanciaTotal =
+        Math.hypot(dx, dy);
+
+
+    if (distanciaTotal === 0) {
+        return 0;
+    }
+
+
+    let bloqueadores = 0;
+
+
+    rivalDe(origen).forEach(rival => {
+
+        const px =
+            rival.x - origen.x;
+
+        const py =
+            rival.y - origen.y;
+
+
+        const proyeccion =
+            (
+                px * dx +
+                py * dy
+            ) /
+            (
+                distanciaTotal *
+                distanciaTotal
+            );
+
+
+        if (
+            proyeccion > 0.05 &&
+            proyeccion < 0.95
+        ) {
+
+            const cercaX =
+                origen.x +
+                dx * proyeccion;
+
+            const cercaY =
+                origen.y +
+                dy * proyeccion;
+
+
+            const distanciaLinea =
+                Math.hypot(
+                    rival.x - cercaX,
+                    rival.y - cercaY
+                );
+
+
+            if (
+                distanciaLinea < 55
+            ) {
+
+                bloqueadores++;
+
+            }
+
+        }
+
+    });
+
+
+    return bloquearoresToScore(
+        bloqueadores
+    );
+
+}
+
+
+function bloquearoresToScore(n) {
+
+    if (n === 0) {
+        return 1;
+    }
+
+    if (n === 1) {
+        return 0.45;
+    }
+
+    return 0.1;
+
+}
+
+
+/* =========================================================
+   CONDUCIR
+========================================================= */
+
+function conducirBalon(jugador) {
+
+    const dir =
+        direccionAtaque(jugador);
+
+
+    let objetivoY =
+        CENTRO_Y;
+
+
+    /*
+       Evitar ir siempre
+       directamente a portería.
+    */
+
+    const rivales =
+        rivalDe(jugador);
+
+
+    const rivalCercano =
+        rivales
+            .sort(
+                (a, b) =>
+                    distancia(jugador, a) -
+                    distancia(jugador, b)
+            )[0];
+
+
+    if (
+        rivalCercano &&
+        distancia(
+            jugador,
+            rivalCercano
+        ) < 220
+    ) {
+
+        /*
+           Regate lateral.
+        */
+
+        objetivoY =
+            jugador.y +
+            (
+                jugador.y <
+                rivalCercano.y
+                    ? -180
+                    : 180
+            );
+
+    } else {
+
+        /*
+           Conducción diagonal.
+        */
+
+        objetivoY =
+            CENTRO_Y +
+            Math.sin(
+                Date.now() / 900 +
+                jugador.x / 300
+            ) * 220;
+
+    }
+
+
+    const dx =
+        dir * jugador.velocidad;
+
+
+    const dy =
+        limitar(
+            objetivoY - jugador.y,
+            -3,
+            3
+        );
+
+
+    jugador.x += dx;
+
+    jugador.y += dy;
+
+
+    jugador.x =
+        limitar(
+            jugador.x,
+            60,
+            W - 60
+        );
+
+
+    jugador.y =
+        limitar(
+            jugador.y,
+            60,
+            H - 60
+        );
+
+}
+
+
+/* =========================================================
+   ATAQUE SIN BALÓN
+========================================================= */
+
+function moverseEnAtaque(jugador) {
+
+    const dir =
+        direccionAtaque(jugador);
+
+
+    const poseedor =
+        balon.poseedor;
+
+
+    /*
+       Crear apoyos.
+    */
+
+    const distanciaBalon =
+        distancia(
+            jugador,
+            poseedor
+        );
+
+
+    /*
+       Jugadores cercanos
+       al poseedor se ofrecen.
+    */
+
+    if (
+        distanciaBalon > 220 &&
+        distanciaBalon < 600
+    ) {
+
+        jugador.objetivoX =
+            poseedor.x +
+            dir * 100;
+
+        jugador.objetivoY =
+            poseedor.y +
+            (
+                jugador.baseY -
+                poseedor.y
+            ) * 0.45;
+
+    } else {
+
+        /*
+           Mantener amplitud
+           y estructura.
+        */
+
+        jugador.objetivoX =
+            jugador.baseX +
+            (
+                poseedor.x -
+                CENTRO_X
+            ) * 0.28;
+
+        jugador.objetivoY =
+            jugador.baseY +
+            (
+                poseedor.y -
+                jugador.baseY
+            ) * 0.35;
+
+    }
+
+
+    /*
+       Desmarque.
+    */
+
+    if (
+        Math.random() <
+        0.008
+    ) {
+
+        jugador.objetivoX +=
+            dir * 250;
+
+    }
+
+
+    moverHaciaObjetivo(
+        jugador,
+        0.08
+    );
+
+}
+
+
+/* =========================================================
+   DEFENSA EN EQUIPO
+========================================================= */
+
+function defenderEnEquipo(jugador) {
+
+    const rival =
+        balon.poseedor;
+
+
+    const dir =
+        direccionAtaque(jugador);
+
+
+    const distanciaBalon =
+        distancia(
+            jugador,
+            rival
+        );
+
+
+    /*
+       Jugadores cercanos presionan.
+    */
+
+    if (
+        distanciaBalon < 260
+    ) {
+
+        jugador.presionando = true;
+
+        jugador.objetivoX =
+            rival.x -
+            dir * 35;
+
+        jugador.objetivoY =
+            rival.y;
+
+    } else {
+
+        jugador.presionando = false;
+
+        /*
+           Mantener bloque defensivo.
+        */
+
+        jugador.objetivoX =
+            jugador.baseX +
+            (
+                rival.x -
+                CENTRO_X
+            ) * 0.18;
+
+        jugador.objetivoY =
+            jugador.baseY +
+            (
+                rival.y -
+                jugador.baseY
+            ) * 0.22;
+
+    }
+
+
+    /*
+       Cobertura:
+       no todos van al balón.
+    */
+
+    const presionadores =
+        equipoDe(jugador)
+            .filter(j =>
+                j.presionando
+            );
+
+
+    if (
+        presionadores.length >= 2 &&
+        distanciaBalon > 130
+    ) {
+
+        jugador.presionando = false;
+
+        jugador.objetivoX =
+            jugador.baseX;
+
+        jugador.objetivoY =
+            jugador.baseY;
+
+    }
+
+
+    moverHaciaObjetivo
